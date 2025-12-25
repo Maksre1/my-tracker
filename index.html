@@ -1485,7 +1485,7 @@
         const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
         let isOnline = navigator.onLine;
-        window.addEventListener('online', () => { isOnline = true; syncFromCloud(); });
+        window.addEventListener('online', () => { isOnline = true; syncToCloud(); });
         window.addEventListener('offline', () => isOnline = false);
 
         let sortType = localStorage.getItem('vapeSortType') || 'date';
