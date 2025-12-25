@@ -1279,10 +1279,6 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
 
     <!-- Navigation Tabs -->
     <div class="tabs">
@@ -1505,20 +1501,6 @@
         let pendingInventoryItem = null;
         let vapeDontAskMerge = localStorage.getItem('vapeDontAskMerge') === 'true';
 
-        // Loading animation - Robust version
-        function hideLoader() {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                overlay.classList.add('hidden');
-                setTimeout(() => overlay.remove(), 400);
-            }
-        }
-
-        // Hide loader on load OR after 3 seconds fallback
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(hideLoader, 600);
-        });
-        setTimeout(hideLoader, 3000); // Fail-safe
 
         // Tab Switching
         let isSwitching = false;
