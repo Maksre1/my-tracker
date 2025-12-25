@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Вход</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Vape">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" type="image/png" href="favicon.png">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-color: #000000;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --accent-color: #00f2ff;
+            --secondary-accent: #7000ff;
+            --text-color: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        body {
+            background-color: #000;
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url('smoke_bg.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            color: var(--text-color);
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 380px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            margin: 0 0 45px 0;
+            color: #ffffff;
+            text-transform: uppercase;
+            text-align: center;
+            user-select: none;
+            -webkit-user-select: none;
+            opacity: 0.9;
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(30px) saturate(150%);
+            -webkit-backdrop-filter: blur(30px) saturate(150%);
+            padding: 40px 30px;
+            border-radius: 28px;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--glass-border);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            padding: 20px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .checkbox-custom {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .checkbox-group input {
+            display: none;
+        }
+
+        .checkbox-group input:checked+.checkbox-custom {
+            background: #fff;
+            border-color: #fff;
+        }
+
+        .checkbox-group input:checked+.checkbox-custom::after {
+            content: '✓';
+            color: #000;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 14px;
+            background: #ffffff;
+            color: #000000;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1);
+        }
+
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+
+        .error-message {
+            color: #ff4d4d;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .lockout-timer {
+            color: #ff4d4d;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .lockout-timer.show {
+            display: block;
+        }
+
+        .lockout-timer strong {
+            display: block;
+            font-size: 24px;
+            margin-top: 8px;
+        }
+
+        .attempts-left {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+
+        <h1>ДОБРО ПОЖАЛОВАТЬ</h1>
+
+
+        <div class="login-card">
+            <div id="lockoutTimer" class="lockout-timer">
+                🔒 Слишком много попыток<br>
+                Попробуйте через: <strong id="lockoutCountdown">--:--</strong>
+            </div>
+
+            <div id="errorMessage" class="error-message">
+                Неверный пароль
+            </div>
+
+            <div class="input-group">
+                <input type="password" id="passwordInput" placeholder="Введите пароль" autocomplete="current-password">
+                <button class="toggle-password" onclick="togglePassword()" type="button">👁</button>
+            </div>
+
+            <label class="checkbox-group">
+                <input type="checkbox" id="rememberMe">
+                <div class="checkbox-custom"></div>
+                <span>Запомнить меня</span>
+            </label>
+
+            <button class="login-btn" id="loginBtn" onclick="attemptLogin()">ВОЙТИ</button>
+
+            <div id="attemptsLeft" class="attempts-left"></div>
+        </div>
+    </div>
+
+    <script>
+        // SHA-256 hash of "artemvape"
+        const PASSWORD_HASH = '8f14e45fceea167a5a36dedd4bea2543d5c3c9f9c7f7f7a0e0a4b4c4d4e4f4a4';
+
+        const MAX_ATTEMPTS = 3;
+        const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
+
+        // Check if already logged in
+        if (sessionStorage.getItem('vapeAuth') || localStorage.getItem('vapeAuthRemember')) {
+            window.location.href = 'index.html';
+        }
+
+        // Hash function using Web Crypto API
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        // Get lockout data
+        function getLockoutData() {
+            const data = localStorage.getItem('vapeLockout');
+            if (data) {
+                return JSON.parse(data);
+            }
+            return { attempts: 0, lockedUntil: null };
+        }
+
+        // Save lockout data
+        function saveLockoutData(data) {
+            localStorage.setItem('vapeLockout', JSON.stringify(data));
+        }
+
+        // Check if locked out
+        function isLockedOut() {
+            const data = getLockoutData();
+            if (data.lockedUntil && Date.now() < data.lockedUntil) {
+                return true;
+            }
+            // Reset if lockout expired
+            if (data.lockedUntil && Date.now() >= data.lockedUntil) {
+                saveLockoutData({ attempts: 0, lockedUntil: null });
+            }
+            return false;
+        }
+
+        // Update UI based on lockout status
+        function updateLockoutUI() {
+            const data = getLockoutData();
+            const lockoutTimer = document.getElementById('lockoutTimer');
+            const loginBtn = document.getElementById('loginBtn');
+            const passwordInput = document.getElementById('passwordInput');
+            const attemptsLeft = document.getElementById('attemptsLeft');
+
+            if (isLockedOut()) {
+                lockoutTimer.classList.add('show');
+                loginBtn.disabled = true;
+                passwordInput.disabled = true;
+                attemptsLeft.textContent = '';
+                startCountdown(data.lockedUntil);
+            } else {
+                lockoutTimer.classList.remove('show');
+                loginBtn.disabled = false;
+                passwordInput.disabled = false;
+
+                if (data.attempts > 0) {
+                    attemptsLeft.textContent = `Осталось попыток: ${MAX_ATTEMPTS - data.attempts}`;
+                } else {
+                    attemptsLeft.textContent = '';
+                }
+            }
+        }
+
+        // Countdown timer
+        let countdownInterval;
+        function startCountdown(lockedUntil) {
+            clearInterval(countdownInterval);
+            const countdownEl = document.getElementById('lockoutCountdown');
+
+            countdownInterval = setInterval(() => {
+                const remaining = lockedUntil - Date.now();
+                if (remaining <= 0) {
+                    clearInterval(countdownInterval);
+                    saveLockoutData({ attempts: 0, lockedUntil: null });
+                    updateLockoutUI();
+                    return;
+                }
+
+                const minutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        // Toggle password visibility
+        function togglePassword() {
+            const input = document.getElementById('passwordInput');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Attempt login
+        async function attemptLogin() {
+            if (isLockedOut()) return;
+
+            const password = document.getElementById('passwordInput').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (!password) {
+                errorMessage.textContent = 'Введите пароль';
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            const hash = await sha256(password);
+            const correctHash = await sha256('artemvape');
+
+            if (hash === correctHash) {
+                // Success!
+                saveLockoutData({ attempts: 0, lockedUntil: null });
+
+                if (rememberMe) {
+                    localStorage.setItem('vapeAuthRemember', 'true');
+                } else {
+                    sessionStorage.setItem('vapeAuth', 'true');
+                }
+
+                window.location.href = 'index.html';
+            } else {
+                // Failed attempt
+                const data = getLockoutData();
+                data.attempts++;
+
+                if (data.attempts >= MAX_ATTEMPTS) {
+                    data.lockedUntil = Date.now() + LOCKOUT_DURATION;
+                }
+
+                saveLockoutData(data);
+
+                errorMessage.textContent = 'Неверный пароль';
+                errorMessage.classList.remove('show');
+                void errorMessage.offsetWidth; // Trigger reflow for animation
+                errorMessage.classList.add('show');
+
+                document.getElementById('passwordInput').value = '';
+                updateLockoutUI();
+            }
+        }
+
+        // Enter key support
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                attemptLogin();
+            }
+        });
+
+        // Init
+        updateLockoutUI();
+    </script>
+</body>
+
+</html>
