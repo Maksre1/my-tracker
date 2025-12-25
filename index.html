@@ -23,7 +23,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&subset=cyrillic&display=swap"
         rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
         :root {
@@ -1279,6 +1278,10 @@
         </div>
     </div>
 
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
 
     <!-- Navigation Tabs -->
     <div class="tabs">
@@ -1333,26 +1336,7 @@
             </div>
             <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
 
-            <div
-                style="margin-top: 20px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 12px; background: rgba(0, 242, 255, 0.05);">
-                <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--accent-color);">☁️ ОБЛАЧНАЯ СИНХРОНИЗАЦИЯ
-                </h4>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <button class="main-btn" onclick="forceUploadToCloud()"
-                        style="padding: 10px; font-size: 11px; background: rgba(0,255,157,0.1); color: var(--success-color); border-color: var(--success-color);">
-                        ☁️ ⬆️ В ОБЛАКО
-                    </button>
-                    <button class="main-btn" onclick="downloadFromCloud()"
-                        style="padding: 10px; font-size: 11px; background: rgba(255,61,113,0.1); color: var(--danger-color); border-color: var(--danger-color);">
-                        ☁️ ⬇️ ИЗ ОБЛАКА
-                    </button>
-                </div>
-                <div style="font-size: 10px; margin-top: 8px; color: var(--text-secondary); text-align: center;">
-                    Используйте для переноса данных между устройствами.
-                </div>
-            </div>
-
-            <button class="main-btn" onclick="shareData()" style="margin-bottom: 15px; margin-top: 15px;">
+            <button class="main-btn" onclick="shareData()" style="margin-bottom: 15px;">
                 📤 ПОДЕЛИТЬСЯ ДАННЫМИ
             </button>
 
@@ -1474,22 +1458,6 @@
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
-
-        // Supabase Config
-        const SUPABASE_URL = 'https://afkwsealqfdujvspvoea.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_sMXGcGGfX8LsPhLcGg-Jbg_0J45ZFdH';
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-        let isOnline = navigator.onLine;
-        window.addEventListener('online', () => { isOnline = true; if (typeof syncToCloud === 'function') syncToCloud(); });
-        window.addEventListener('offline', () => isOnline = false);
-
-        function updateDatalist() {
-            // This function used to update a datalist, but we moved to custom autocomplete.
-            // We keep it defined to prevent crashes since it's called in multiple places.
-            console.log('Datalist updated');
-        }
-
         let sortType = localStorage.getItem('vapeSortType') || 'date';
         let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
         let statsPeriod = 'day';
@@ -1501,6 +1469,14 @@
         let pendingInventoryItem = null;
         let vapeDontAskMerge = localStorage.getItem('vapeDontAskMerge') === 'true';
 
+        // Loading animation
+        window.addEventListener('DOMContentLoaded', () => {
+            const overlay = document.getElementById('loadingOverlay');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                setTimeout(() => overlay.remove(), 400);
+            }, 600); // Show for 600ms
+        });
 
         // Tab Switching
         let isSwitching = false;
@@ -2082,191 +2058,7 @@
             localStorage.setItem('vapeSales', JSON.stringify(sales));
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
-
-            // Trigger background cloud sync (debounced in real app, but here direct)
-            if (isOnline) {
-                // We don't await this to keep UI responsive
-                syncToCloud();
-            }
         }
-
-        /* --- Cloud Sync Functions --- */
-
-        async function syncToCloud() {
-            if (!supabase) return;
-            console.log('Syncing to cloud...');
-
-            // Upsert Inventory
-            // We map local items to cloud structure. 
-            // Warning: This simple logic overwrites cloud with local. 
-            // Ideally we should use IDs. Current local IDs are timestamps (integers). 
-            // Supabase IDs are UUIDs (default). 
-            // Strategy: We will just clear cloud and re-insert for this MVP absolute sync 
-            // OR strictly simple: store the whole JSON blob? 
-            // No, user wants SQL tables.
-
-            // 1. Inventory
-            if (inventory.length > 0) {
-                const invData = inventory.map(i => ({
-                    // We need to store local ID to map back? 
-                    // Let's rely on Names for now or just insert fresh. 
-                    // Current simplified approach: Delete all and re-insert is risky but easiest for consistency if single user.
-                    // BETTER: Upsert by Name.
-                    name: i.name,
-                    qty: i.qty,
-                    cost: i.cost,
-                    price: i.price,
-                    strength: i.strength || ''
-                }));
-
-                // For this MVP version, we will try to UPSERT based on 'name' if we made it unique, 
-                // but we didn't add unique constraint.
-                // Let's do a "Replace All" strategy for safety of data consistency for a single user device.
-                // NOTE: This creates a lot of churn. 
-                // Option B: Just UPSERT row by row.
-
-                // Let's stick to LocalStorage as "Source of Truth" for now and just mirror to Cloud for Backup.
-                // If user wants to restore, they "Import from Cloud".
-
-                // Actually user wants "Sync". 
-                // Let's assume:
-                // Sales: Insert new ones (based on ID/Timestamp).
-                // Inventory: Upsert by Name.
-            }
-        }
-
-        async function forceUploadToCloud() {
-            if (!confirm('Это перезапишет данные в облаке вашими текущими данными с телефона. Продолжить?')) return;
-
-            const loading = document.getElementById('loadingOverlay');
-            if (loading) loading.style.display = 'flex';
-
-            try {
-                // 1. Clear tables (optional, but ensures no dupes for this "Reset" sync)
-                await supabase.from('inventory').delete().neq('qty', -9999); // delete all
-                await supabase.from('sales').delete().neq('qty', -9999);
-                await supabase.from('losses').delete().neq('qty', -9999);
-
-                // 2. Upload Inventory
-                if (inventory.length > 0) {
-                    const invPayload = inventory.map(i => ({
-                        name: i.name,
-                        qty: i.qty,
-                        cost: i.cost,
-                        price: i.price,
-                        strength: i.strength || ''
-                    }));
-                    const { error: matchError } = await supabase.from('inventory').insert(invPayload);
-                    if (matchError) throw matchError;
-                }
-
-                // 3. Upload Sales
-                if (sales.length > 0) {
-                    const salesPayload = sales.map(s => ({
-                        name: s.name,
-                        qty: s.qty,
-                        price: s.price,
-                        cost: s.cost || 0,
-                        profit: (s.price - (s.cost || 0)) * s.qty,
-                        note: s.note || '',
-                        date: new Date(s.timestamp).toISOString()
-                    }));
-                    const { error: salesError } = await supabase.from('sales').insert(salesPayload);
-                    if (salesError) throw salesError;
-                }
-
-                // 4. Upload Losses
-                if (losses.length > 0) {
-                    const lossesPayload = losses.map(l => ({
-                        name: l.name,
-                        qty: l.qty,
-                        cost: l.cost,
-                        reason: l.reason,
-                        date: new Date(l.timestamp).toISOString()
-                    }));
-                    const { error: lossError } = await supabase.from('losses').insert(lossesPayload);
-                    if (lossError) throw lossError;
-                }
-
-                alert('✅ Данные успешно выгружены в облако!');
-            } catch (err) {
-                console.error(err);
-                alert('Ошибка синхронизации: ' + err.message);
-            } finally {
-                if (loading) loading.style.display = 'none';
-            }
-        }
-
-        async function downloadFromCloud() {
-            if (!confirm('ВНИМАНИЕ: Это заменит данные на телефоне данными из облака. Продолжить?')) return;
-
-            const loading = document.getElementById('loadingOverlay');
-            if (loading) loading.style.display = 'flex';
-
-            try {
-                // Fetch Inventory
-                const { data: invData, error: invError } = await supabase.from('inventory').select('*');
-                if (invError) throw invError;
-
-                // Fetch Sales
-                const { data: salesData, error: salesError } = await supabase.from('sales').select('*');
-                if (salesError) throw salesError;
-
-                // Fetch Losses
-                const { data: lossData, error: lossError } = await supabase.from('losses').select('*');
-                if (lossError) throw lossError;
-
-                // Convert back to App format
-                inventory = invData.map(i => ({
-                    id: Date.now() + Math.random(), // generate new local ID
-                    name: i.name,
-                    qty: i.qty,
-                    cost: i.cost,
-                    price: i.price,
-                    strength: i.strength
-                }));
-
-                sales = salesData.map(s => ({
-                    id: Date.parse(s.date) || Date.now(),
-                    timestamp: Date.parse(s.date) || Date.now(),
-                    name: s.name,
-                    qty: s.qty,
-                    price: s.price,
-                    cost: s.cost,
-                    note: s.note,
-                    date: new Date(s.date).toLocaleDateString('ru-RU')
-                }));
-                // Sort sales by date desc
-                sales.sort((a, b) => b.timestamp - a.timestamp);
-
-                losses = lossData.map(l => ({
-                    id: Date.parse(l.date) || Date.now(),
-                    timestamp: Date.parse(l.date) || Date.now(),
-                    name: l.name,
-                    qty: l.qty,
-                    cost: l.cost,
-                    reason: l.reason,
-                    date: new Date(l.date).toLocaleDateString('ru-RU')
-                }));
-
-                saveData(); // Save to localStorage
-                // Reload UI
-                renderSales();
-                renderInventory();
-                renderLosses();
-                renderStats();
-                updateDatalist();
-                updateInfoPageStats();
-
-                alert('✅ Данные успешно загружены из облака!');
-            } catch (err) {
-                console.error(err);
-                alert('Ошибка загрузки: ' + err.message);
-            } finally {
-                if (loading) loading.style.display = 'none';
-            }
-        }
-
 
         function clearSales() {
             if (confirm("Очистить историю продаж?")) {
