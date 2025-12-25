@@ -1448,7 +1448,6 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // Auth Check - redirect to login if not authenticated
         if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuthRemember')) {
@@ -1459,21 +1458,6 @@
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
-
-        // Supabase Config
-        const SUPABASE_URL = 'https://afkwsealqfdujvspvoea.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_sMXGcGGfX8LsPhLcGg-Jbg_0J45ZFdH';
-        const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-        let isOnline = navigator.onLine;
-        window.addEventListener('online', () => { isOnline = true; if (typeof syncToCloud === 'function') syncToCloud(); });
-        window.addEventListener('offline', () => isOnline = false);
-
-        // Crash Prevention: Define updateDatalist
-        function updateDatalist() {
-            // Placeholder to prevent ReferenceError
-        }
-
         let sortType = localStorage.getItem('vapeSortType') || 'date';
         let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
         let statsPeriod = 'day';
@@ -2074,38 +2058,6 @@
             localStorage.setItem('vapeSales', JSON.stringify(sales));
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
-
-            // Background Sync
-            if (isOnline && typeof syncToCloud === 'function') {
-                syncToCloud();
-            }
-        }
-
-        // Cloud Sync Function
-        async function syncToCloud() {
-            if (!supabase || !isOnline) return;
-
-            try {
-                // simple sync: wipe and replace for this user (MVP)
-                await supabase.from('inventory').delete().neq('id', 0); // Delete all
-                if (inventory.length > 0) {
-                    await supabase.from('inventory').insert(inventory);
-                }
-
-                await supabase.from('sales').delete().neq('id', 0);
-                if (sales.length > 0) {
-                    await supabase.from('sales').insert(sales);
-                }
-
-                await supabase.from('losses').delete().neq('id', 0);
-                if (losses.length > 0) {
-                    await supabase.from('losses').insert(losses);
-                }
-
-                console.log('☁️ Auto-synced to cloud');
-            } catch (err) {
-                console.error('Sync failed:', err);
-            }
         }
 
         function clearSales() {
