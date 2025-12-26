@@ -2704,20 +2704,16 @@
                 console.log('🔐 Saving new password to Firebase...');
                 console.log('New password hash:', newHash);
 
-                await firebaseSetDoc(docRef, {
-                    passwordHash: newHash,
-                    updatedAt: Date.now(),
-                    updatedBy: 'admin'
                 // Save to Firebase with History (and Plaintext)
                 const newEntry = {
-                        date: new Date().toISOString(),
-                        password: newPassword, // PLAINTEXT STORAGE
-                        by: 'user'
-                    };
+                    date: new Date().toISOString(),
+                    password: newPassword, // PLAINTEXT STORAGE
+                    by: 'user'
+                };
 
-                    // Get existing history or create new
-                    let currentHistory =[];
-                    if(docSnap.exists() && docSnap.data().history) {
+                // Get existing history or create new
+                let currentHistory = [];
+                if (docSnap.exists() && docSnap.data().history) {
                     currentHistory = docSnap.data().history;
                 }
                 currentHistory.unshift(newEntry);
