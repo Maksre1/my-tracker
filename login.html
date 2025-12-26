@@ -393,7 +393,8 @@
         async function loadPasswordFromFirebase() {
             try {
                 if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) {
-                    console.log('Firebase not initialized, using fallback password');
+                    console.log('⚠️ Firebase not initialized, using fallback password');
+                    console.log('Fallback hash:', FALLBACK_PASSWORD_HASH);
                     return FALLBACK_PASSWORD_HASH;
                 }
 
@@ -402,10 +403,13 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    console.log('Password loaded from Firebase');
+                    console.log('✅ Password loaded from Firebase');
+                    console.log('Firebase hash:', data.passwordHash);
+                    console.log('Updated at:', new Date(data.updatedAt).toLocaleString());
                     return data.passwordHash || FALLBACK_PASSWORD_HASH;
                 } else {
-                    console.log('No password in Firebase, using fallback and saving current');
+                    console.log('⚠️ No password in Firebase, using fallback and saving current');
+                    console.log('Saving fallback hash:', FALLBACK_PASSWORD_HASH);
                     // Save current password to Firebase for future use
                     await window.firebaseSetDoc(docRef, {
                         passwordHash: FALLBACK_PASSWORD_HASH,
@@ -415,7 +419,7 @@
                     return FALLBACK_PASSWORD_HASH;
                 }
             } catch (err) {
-                console.error('Error loading password from Firebase:', err);
+                console.error('❌ Error loading password from Firebase:', err);
                 console.log('Using fallback password');
                 return FALLBACK_PASSWORD_HASH;
             }
@@ -436,9 +440,13 @@
             }
 
             // Load password from Firebase (with fallback)
+            console.log('🔍 Loading password from Firebase...');
             PASSWORD_HASH = await loadPasswordFromFirebase();
+            console.log('Password hash to compare:', PASSWORD_HASH);
 
             const hash = await sha256(password);
+            console.log('Your password hash:', hash);
+            console.log('Hashes match:', hash === PASSWORD_HASH);
 
             if (hash === PASSWORD_HASH) {
                 // Success!

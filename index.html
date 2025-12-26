@@ -2432,12 +2432,16 @@
 
                 // Save new password
                 const newHash = await sha256(newPassword);
+                console.log('🔐 Saving new password to Firebase...');
+                console.log('New password hash:', newHash);
+
                 await firebaseSetDoc(docRef, {
                     passwordHash: newHash,
                     updatedAt: Date.now(),
                     updatedBy: 'admin'
                 });
 
+                console.log('✅ Password successfully saved to Firebase!');
                 showToast('Пароль успешно изменен! 🔒');
                 closeChangePasswordModal();
             } catch (err) {
