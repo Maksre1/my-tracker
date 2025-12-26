@@ -297,7 +297,8 @@
         localStorage.removeItem('vapeRole');
 
         // System Password Hash (loaded from Firebase)
-        let SYSTEM_PASSWORD_HASH = null;
+        // System Password Hash (loaded from Firebase with fallback)
+        let SYSTEM_PASSWORD_HASH = "6b209770579b839824dae1c958d7304ae798ef4d7ec45593c8022141b945482b"; // hardcoded fallback for maks_2000
 
         // Check if already logged in (localStorage is default now)
         if (localStorage.getItem('vapeAuth') || sessionStorage.getItem('vapeAuth')) {
