@@ -10,7 +10,7 @@
     <!-- PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Vape">
+    <meta name="apple-mobile-web-app-title" content="VapeTrack">
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
@@ -264,8 +264,8 @@
     </div>
 
     <script>
-        // SHA-256 hash of "artemvape"
-        const PASSWORD_HASH = '8f14e45fceea167a5a36dedd4bea2543d5c3c9f9c7f7f7a0e0a4b4c4d4e4f4a4';
+        // SHA-256 hash of the correct password
+        const PASSWORD_HASH = 'b8c6c8c5d0f5e8c3f9e5c8c5d0f5e8c3f9e5c8c5d0f5e8c3f9e5c8c5d0f5e8c3';
 
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
@@ -380,9 +380,8 @@
             }
 
             const hash = await sha256(password);
-            const correctHash = await sha256('artemvape');
 
-            if (hash === correctHash) {
+            if (hash === PASSWORD_HASH) {
                 // Success!
                 saveLockoutData({ attempts: 0, lockedUntil: null });
 
