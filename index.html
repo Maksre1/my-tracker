@@ -1178,6 +1178,65 @@
             position: relative;
         }
 
+        /* Swipe Elements */
+        .item-card-wrapper {
+            position: relative;
+            overflow: hidden;
+            border-radius: 22px;
+            margin-bottom: 12px;
+            user-select: none;
+            touch-action: pan-y;
+        }
+
+        .swipe-action {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            padding: 0 25px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            line-height: normal;
+            border-radius: 22px;
+        }
+
+        .swipe-action.left {
+            background: var(--danger-color);
+            justify-content: flex-end;
+        }
+
+        .swipe-action.right {
+            background: var(--success-color);
+            justify-content: flex-start;
+        }
+
+        .item-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            padding: 20px;
+            border-radius: 22px;
+            margin-bottom: 0;
+            /* Handled by wrapper */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.02);
+            transition: transform 0.2s ease-out;
+            position: relative;
+            z-index: 2;
+        }
+
+        .badge-debt {
+            background: rgba(255, 152, 0, 0.15);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
         .note-date {
             font-size: 10px;
             opacity: 0.5;
@@ -1258,12 +1317,24 @@
                     <input type="number" id="salePrice" placeholder="Цена" inputmode="decimal" step="any" required>
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;">
                     <label class="checkbox-group">
                         <input type="checkbox" id="useDate" checked onchange="toggleDateInput()">
                         <div class="checkbox-custom"></div>
                         <span>Текущая дата</span>
                     </label>
+
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="isDebt" onchange="toggleDebtInput()">
+                        <div class="checkbox-custom"
+                            style="border-color: #ff9800; background: rgba(255, 152, 0, 0.05);"></div>
+                        <span style="color: #ff9800;">В долг</span>
+                    </label>
+
+                    <div id="debtorNameContainer" style="display: none; animation: fadeIn 0.3s ease;">
+                        <input type="text" id="debtorName" placeholder="ФИО должника"
+                            style="border-radius: 16px; background: rgba(255,152,0,0.08); border: 1px solid rgba(255,152,0,0.3); color: white; padding: 14px;">
+                    </div>
 
                     <div id="manualDateContainer" style="display: none; animation: fadeIn 0.3s ease; margin-top: 10px;">
                         <input type="date" id="saleDate"
@@ -1351,6 +1422,25 @@
             </div>
 
             <div id="inventoryDisplay"></div>
+        </div>
+
+        <!-- Page: Debts -->
+        <div id="debtsPage" class="page">
+            <div class="input-card" style="padding: 30px;">
+                <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">РАБОТА С ДОЛГАМИ</h3>
+
+                <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff9800;">
+                    <div>Общий долг</div>
+                    <span id="totalDebtsSum" style="color: #ff9800;">0</span> ₽
+                </div>
+
+                <div id="debtsDisplay"></div>
+
+                <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
+                    💡 Подсказка: Свайп вправо 🟢 — Оплачено<br>
+                    Свайп влево 🔴 — Простить (в убытки)
+                </div>
+            </div>
         </div>
 
         <!-- Page: Losses -->
@@ -1626,6 +1716,8 @@
         <div class="tab active" onclick="switchTab('sales')"><span
                 style="font-size: 18px;">💸</span><span>Продажи</span></div>
         <div class="tab" onclick="switchTab('inventory')"><span style="font-size: 18px;">📦</span><span>Склад</span>
+        </div>
+        <div class="tab" onclick="switchTab('debts')"><span style="font-size: 18px;">🤝</span><span>Долги</span>
         </div>
         <div class="tab" onclick="switchTab('losses')"><span style="font-size: 18px;">📉</span><span>Убытки</span>
         </div>
@@ -2039,6 +2131,7 @@
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
+        let debts = JSON.parse(localStorage.getItem('vapeDebts')) || [];
         let notes = JSON.parse(localStorage.getItem('vapeNotes')) || [];
         let financialGoal = parseInt(localStorage.getItem('vapeFinancialGoal')) || 0;
 
@@ -2097,6 +2190,7 @@
             const activePage = document.querySelector('.page.active');
             let targetPageId = 'salesPage';
             if (tabName === 'inventory') targetPageId = 'inventoryPage';
+            if (tabName === 'debts') targetPageId = 'debtsPage';
             if (tabName === 'losses') targetPageId = 'lossesPage';
             if (tabName === 'stats') targetPageId = 'statsPage';
             if (tabName === 'data') targetPageId = 'dataPage';
@@ -2107,6 +2201,7 @@
             const renderData = () => {
                 if (tabName === 'sales') renderSales();
                 else if (tabName === 'inventory') renderInventory();
+                else if (tabName === 'debts') renderDebts();
                 else if (tabName === 'losses') renderLosses();
                 else if (tabName === 'stats') renderStats();
                 else if (tabName === 'data') updateInfoPageStats();
@@ -2248,9 +2343,8 @@
             inventory.forEach(item => {
                 const lowStockWarning = item.qty === 1 ? '<span class="low-stock-warning">⚠️ Последний!</span>' :
                     item.qty === 0 ? '<span class="low-stock-warning" style="background: #666;">Нет в наличии</span>' : '';
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
+
+                const cardMarkup = `
                     <div class="item-info">
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             <b style="font-size: 17px;">${item.name}</b>
@@ -2268,7 +2362,8 @@
                         <button class="delete-btn" onclick="deleteInventory(${item.id})">×</button>
                     </div>
                 `;
-                display.appendChild(card);
+                const wrapper = createSwipeWrapper(cardMarkup, () => deleteInventory(item.id));
+                display.appendChild(wrapper);
             });
         }
 
@@ -2364,14 +2459,25 @@
             document.getElementById('manualDateContainer').style.display = useDate ? 'none' : 'block';
         }
 
+        function toggleDebtInput() {
+            const isDebt = document.getElementById('isDebt').checked;
+            document.getElementById('debtorNameContainer').style.display = isDebt ? 'block' : 'none';
+        }
+
         function addSale() {
             const name = document.getElementById('saleName').value.trim();
             const qty = parseInt(document.getElementById('saleQty').value);
             const price = parseFloat(document.getElementById('salePrice').value);
             const useDate = document.getElementById('useDate').checked;
             const manualDate = document.getElementById('saleDate').value;
+            const isDebt = document.getElementById('isDebt').checked;
+            const debtorName = document.getElementById('debtorName').value.trim();
 
             if (name && !isNaN(qty) && !isNaN(price)) {
+                if (isDebt && !debtorName) {
+                    alert("Введите имя должника!");
+                    return;
+                }
                 // Anti-duplication check
                 const currentSignature = `${name}|${qty}|${price}`;
                 const timeNow = Date.now();
@@ -2418,22 +2524,36 @@
                     price,
                     cost: costPrice,
                     date: saleDateStr,
-                    timestamp: now.getTime()
+                    timestamp: now.getTime(),
+                    isDebt,
+                    debtor: isDebt ? debtorName : null
                 };
 
-                sales.unshift(sale);
+                if (isDebt) {
+                    debts.unshift(sale);
+                    saveData(`Добавлен долг: ${debtorName} (${name})`);
+                    showToast("Долг записан 🤝");
+                } else {
+                    sales.unshift(sale);
+                    saveData(`Продажа: ${name}`);
+                    showToast("Продано! 💸");
+                }
 
                 lastAddedSignature = currentSignature;
                 lastAddedTime = timeNow;
 
                 saveData();
                 renderSales();
+                renderDebts();
                 renderInventory(); // update stock count in view if switched back
                 updateDatalist();
 
                 document.getElementById('saleName').value = '';
                 document.getElementById('saleQty').value = '';
                 document.getElementById('salePrice').value = '';
+                document.getElementById('isDebt').checked = false;
+                document.getElementById('debtorNameContainer').style.display = 'none';
+                document.getElementById('debtorName').value = '';
             } else {
                 alert("Заполни поля продажи!");
             }
@@ -2583,25 +2703,32 @@
                     const group = groups[date];
                     const div = document.createElement('div');
                     let html = `<div class="date-divider">${date} ${sortType === 'profit_day' ? `<span style="font-size:10px; opacity:0.7; margin-left:auto;">+${group.totalProfit.toLocaleString('ru-RU')} ₽</span>` : ''}</div>`;
+
+                    const container = document.createElement('div');
                     group.items.forEach(s => {
                         const profit = (s.price - s.cost) * s.qty;
-                        html += `
-                            <div class="item-card">
-                                <div class="item-info">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <b>${s.name}</b>
-                                        <button class="edit-btn" onclick="openSaleEdit(${s.id})">✎</button>
-                                    </div>
-                                    <small>${sortType === 'profit_day' ? s.date + ' • ' : ''}${s.qty} шт. × ${s.price} ₽ ${s.cost > 0 ? `<span class="badge badge-profit">+${profit.toLocaleString('ru-RU')} ₽</span>` : ''}</small>
+                        const cardMarkup = `
+                            <div class="item-info">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <b>${s.name}</b>
+                                    <button class="edit-btn" onclick="openSaleEdit(${s.id})">✎</button>
                                 </div>
-                                <div class="item-right">
-                                    <span class="item-price">${(s.price * s.qty).toLocaleString('ru-RU')} ₽</span>
-                                    <button class="delete-btn" onclick="deleteSale(${s.id})">×</button>
-                                </div>
+                                <small>${sortType === 'profit_day' ? s.date + ' • ' : ''}${s.qty} шт. × ${s.price} ₽ ${s.cost > 0 ? `<span class="badge badge-profit">+${profit.toLocaleString('ru-RU')} ₽</span>` : ''}</small>
+                            </div>
+                            <div class="item-right">
+                                <span class="item-price">${(s.price * s.qty).toLocaleString('ru-RU')} ₽</span>
+                                <button class="delete-btn" onclick="deleteSale(${s.id})">×</button>
                             </div>
                         `;
+                        const wrapper = createSwipeWrapper(cardMarkup,
+                            () => deleteSale(s.id),
+                            () => { /* No special right action for sales yet */ },
+                            'bottom', 'Удалить'
+                        );
+                        container.appendChild(wrapper);
                     });
                     div.innerHTML = html;
+                    div.appendChild(container);
                     display.appendChild(div);
                 });
             } else {
@@ -2618,9 +2745,7 @@
 
                 itemsToSort.forEach(s => {
                     const profit = (s.price - s.cost) * s.qty;
-                    const card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `
+                    const cardMarkup = `
                         <div class="item-info">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <b>${s.name}</b>
@@ -2633,9 +2758,154 @@
                             <button class="delete-btn" onclick="deleteSale(${s.id})">×</button>
                         </div>
                     `;
-                    display.appendChild(card);
+                    const wrapper = createSwipeWrapper(cardMarkup, () => deleteSale(s.id));
+                    display.appendChild(wrapper);
                 });
             }
+        }
+
+        // Debts Logic
+        function renderDebts() {
+            const display = document.getElementById('debtsDisplay');
+            const totalSumEl = document.getElementById('totalDebtsSum');
+            display.innerHTML = '';
+
+            let totalSum = 0;
+            debts.forEach(d => totalSum += (d.price * d.qty));
+            totalSumEl.textContent = totalSum.toLocaleString('ru-RU');
+
+            if (debts.length === 0) {
+                display.innerHTML = '<div class="empty-state">Долгов нет 🎉</div>';
+                return;
+            }
+
+            debts.forEach(d => {
+                const markup = `
+                    <div class="item-info">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <b style="color: #ff9800;">${d.debtor}</b>
+                            <span class="badge badge-debt" style="font-size: 10px;">ДОЛГ</span>
+                        </div>
+                        <small>${d.name} (${d.qty} шт.) • ${d.date}</small>
+                    </div>
+                    <div class="item-right" style="flex-direction: row; gap: 10px; align-items: center;">
+                        <span class="item-price" style="color: #ff9800;">${(d.price * d.qty).toLocaleString('ru-RU')} ₽</span>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="qty-btn" style="background: rgba(0, 240, 170, 0.2); color: var(--success-color); border: 1px solid var(--success-color);" onclick="manageDebt(${d.id}, 'paid')">✓</button>
+                            <button class="qty-btn" style="background: rgba(255, 59, 48, 0.2); color: var(--danger-color); border: 1px solid var(--danger-color);" onclick="manageDebt(${d.id}, 'forgive')">×</button>
+                        </div>
+                    </div>
+                `;
+                const wrapper = createSwipeWrapper(markup,
+                    () => manageDebt(d.id, 'forgive'),
+                    () => manageDebt(d.id, 'paid'),
+                    'Простить', 'Оплачено'
+                );
+                display.appendChild(wrapper);
+            });
+        }
+
+        function manageDebt(id, action) {
+            const debt = debts.find(d => d.id === id);
+            if (!debt) return;
+
+            if (action === 'paid') {
+                if (confirm(`Подтвердить оплату долга от ${debt.debtor}?`)) {
+                    debts = debts.filter(d => d.id !== id);
+                    debt.isDebt = false;
+                    debt.debtor = null;
+                    sales.unshift(debt);
+                    saveData(`Долг оплачен: ${debt.debtor} (${debt.name})`);
+                    showToast("Оплата принята! 💸");
+                    renderDebts();
+                    renderSales();
+                }
+            } else if (action === 'forgive') {
+                if (confirm(`Вы действительно хотите ПРОСТИТЬ долг ${debt.debtor}? Сумма уйдет в убытки.`)) {
+                    debts = debts.filter(d => d.id !== id);
+                    const lossItem = {
+                        id: Date.now(),
+                        name: `Прощенный долг: ${debt.debtor} (${debt.name})`,
+                        cost: (debt.price * debt.qty), // Forgiving full retail amount as loss
+                        qty: 1,
+                        date: new Date().toLocaleDateString('ru-RU'),
+                        reason: 'Прощенный долг'
+                    };
+                    losses.unshift(lossItem);
+                    saveData(`Долг прощен: ${debt.debtor}`);
+                    showToast("Долг прощен 📉");
+                    renderDebts();
+                    renderLosses();
+                }
+            }
+        }
+
+        // Swipe Functionality
+        function createSwipeWrapper(innerMarkup, onSwipeLeft, onSwipeRight, leftLabel = "Удалить", rightLabel = "Действие") {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'item-card-wrapper';
+
+            const leftAction = document.createElement('div');
+            leftAction.className = 'swipe-action left';
+            leftAction.innerHTML = `<span>${leftLabel}</span>`;
+
+            const rightAction = document.createElement('div');
+            rightAction.className = 'swipe-action right';
+            rightAction.innerHTML = `<span>${rightLabel}</span>`;
+
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.innerHTML = innerMarkup;
+
+            wrapper.appendChild(leftAction);
+            wrapper.appendChild(rightAction);
+            wrapper.appendChild(card);
+
+            // Swipe Logic
+            let startX = 0;
+            let currentX = 0;
+            let isSwiping = false;
+            const threshold = 100;
+
+            card.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                isSwiping = true;
+                card.style.transition = 'none';
+            }, { passive: true });
+
+            card.addEventListener('touchmove', (e) => {
+                if (!isSwiping) return;
+                currentX = e.touches[0].clientX - startX;
+
+                // Resistance
+                if (Math.abs(currentX) > 150) currentX = currentX > 0 ? 150 + (currentX - 150) * 0.2 : -150 + (currentX + 150) * 0.2;
+
+                card.style.transform = `translateX(${currentX}px)`;
+            }, { passive: true });
+
+            card.addEventListener('touchend', () => {
+                isSwiping = false;
+                card.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+                if (currentX > threshold && onSwipeRight) {
+                    card.style.transform = 'translateX(100%)';
+                    setTimeout(() => {
+                        onSwipeRight();
+                        if (card.parentElement) card.style.transform = 'translateX(0)';
+                    }, 300);
+                } else if (currentX < -threshold && onSwipeLeft) {
+                    card.style.transform = 'translateX(-100%)';
+                    setTimeout(() => {
+                        onSwipeLeft();
+                        if (card.parentElement) card.style.transform = 'translateX(0)';
+                    }, 300);
+                } else {
+                    card.style.transform = 'translateX(0)';
+                }
+                currentX = 0;
+            });
+
+            return wrapper;
         }
 
         // Global Actions
@@ -2645,6 +2915,7 @@
             localStorage.setItem('vapeSales', JSON.stringify(sales));
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
+            localStorage.setItem('vapeDebts', JSON.stringify(debts));
             localStorage.setItem('vapeNotes', JSON.stringify(notes));
             localStorage.setItem('vapeFinancialGoal', financialGoal);
             localStorage.setItem('vapeLastUpdate', now);
@@ -2675,6 +2946,7 @@
                         sales: sales,
                         inventory: inventory,
                         losses: losses,
+                        debts: debts,
                         notes: notes,
                         financialGoal: financialGoal,
                         updatedAt: now,
@@ -2705,12 +2977,14 @@
                 sales = data.sales || [];
                 inventory = data.inventory || [];
                 losses = data.losses || [];
+                debts = data.debts || [];
                 notes = data.notes || [];
                 financialGoal = data.financialGoal || 0;
 
                 localStorage.setItem('vapeSales', JSON.stringify(sales));
                 localStorage.setItem('vapeInventory', JSON.stringify(inventory));
                 localStorage.setItem('vapeLosses', JSON.stringify(losses));
+                localStorage.setItem('vapeDebts', JSON.stringify(debts));
                 localStorage.setItem('vapeNotes', JSON.stringify(notes));
                 localStorage.setItem('vapeFinancialGoal', financialGoal);
                 localStorage.setItem('vapeLastUpdate', cloudTime);
@@ -3512,15 +3786,22 @@
 
         function renderLosses() {
             const container = document.getElementById('lossesHistory');
+            const totalEl = document.getElementById('lossesPageTotal');
+            container.innerHTML = '';
+
+            let totalLoss = 0;
+            losses.forEach(l => totalLoss += (l.cost * l.qty));
+            if (totalEl) totalEl.textContent = totalLoss.toLocaleString('ru-RU');
+
             if (losses.length === 0) {
                 container.innerHTML = '<div class="empty-state" style="padding: 20px;">Убытков нет 👍</div>';
                 return;
             }
 
             const reasonLabels = { defect: 'Брак', lost: 'Потерян', gift: 'Подарил', self: 'Оставил себе', other: 'Другое' };
-            container.innerHTML = losses.map(l => `
-                <div class="loss-item">
-                    <div class="loss-item-info">
+            losses.forEach(l => {
+                const markup = `
+                    <div class="item-info">
                         <b>${l.name}</b>
                         <small>${l.date} • ${reasonLabels[l.reason] || l.reason} • ${l.qty} шт.${l.note ? ' • ' + l.note : ''}</small>
                     </div>
@@ -3529,8 +3810,10 @@
                         <button class="edit-btn" onclick="openLossEdit(${l.id})" title="Редактировать">✏️</button>
                         <button class="delete-btn" onclick="deleteLoss(${l.id})">×</button>
                     </div>
-                </div>
-            `).join('');
+                `;
+                const wrapper = createSwipeWrapper(markup, () => deleteLoss(l.id));
+                container.appendChild(wrapper);
+            });
         }
 
         function deleteLoss(id) {
