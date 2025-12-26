@@ -1228,6 +1228,20 @@
                 </div>
             </div>
 
+            <div
+                style="margin: 25px 0 15px 12px; font-size: 11px; font-weight: bold; opacity: 0.5; text-transform: uppercase; letter-spacing: 1.5px;">
+                СКЛАД СЕЙЧАС</div>
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="total-box" style="--accent-color: var(--secondary-accent);">
+                    <div>Стоимость</div>
+                    <span id="statInvValue">0</span> ₽
+                </div>
+                <div class="total-box profit" style="--accent-color: var(--success-color);">
+                    <div>Ожид. прибыль</div>
+                    <span id="statInvProfit">0</span> ₽
+                </div>
+            </div>
+
             <div class="input-card" style="padding: 20px;">
                 <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">🔥 ТОП товары</h3>
                 <div id="topProducts"></div>
@@ -1427,7 +1441,7 @@
     <!-- Data & Settings Page -->
     <div id="dataPage" class="page">
         <!-- Statistics Cards -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
             <div
                 style="background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center;">
                 <div style="font-size: 24px; margin-bottom: 5px;">📊</div>
@@ -1445,6 +1459,15 @@
                 <div id="infoInventoryCount" style="font-size: 20px; font-weight: 700; color: var(--accent-color);">0
                 </div>
             </div>
+        </div>
+
+        <div
+            style="background: linear-gradient(135deg, rgba(112, 0, 255, 0.1), rgba(0, 242, 255, 0.1)); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center; margin-bottom: 20px;">
+            <div
+                style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+                Общая стоимость склада</div>
+            <div id="infoInventoryValue" style="font-size: 24px; font-weight: 700; color: #ffffff;">0 <span
+                    style="font-size: 16px; font-weight: normal; opacity: 0.6;">₽</span></div>
         </div>
 
         <!-- Data Management Card -->
@@ -3067,6 +3090,14 @@
             document.getElementById('statLosses').textContent = lossesTotal.toLocaleString('ru-RU');
             document.getElementById('statSalesCount').textContent = salesCount.toLocaleString('ru-RU');
 
+            // Current Inventory Stats (Global)
+            const invCostTotal = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
+            const invRevenueTotal = inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 0)), 0);
+            const invProfitPotential = invRevenueTotal - invCostTotal;
+
+            document.getElementById('statInvValue').textContent = invCostTotal.toLocaleString('ru-RU');
+            document.getElementById('statInvProfit').textContent = invProfitPotential.toLocaleString('ru-RU');
+
             // Update Losses Page Total if element exists
             const lpTotal = document.getElementById('lossesPageTotal');
             if (lpTotal) {
@@ -3300,15 +3331,20 @@
         function updateInfoPageStats() {
             const salesCountEl = document.getElementById('infoSalesCount');
             const inventoryCountEl = document.getElementById('infoInventoryCount');
+            const inventoryValueEl = document.getElementById('infoInventoryValue');
 
             if (salesCountEl) {
                 salesCountEl.textContent = sales.length;
             }
 
             if (inventoryCountEl) {
-                // Sum total quantity of all inventory items
                 const totalQty = inventory.reduce((sum, item) => sum + (item.qty || 0), 0);
                 inventoryCountEl.textContent = totalQty;
+            }
+
+            if (inventoryValueEl) {
+                const totalValue = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
+                inventoryValueEl.textContent = totalValue.toLocaleString('ru-RU');
             }
         }
 
