@@ -1404,12 +1404,7 @@
             }
         }
 
-        border: 1px solid var(--glass-border);
-        padding: 15px;
-        border-radius: 18px;
-        margin-bottom: 10px;
-        position: relative;
-        }
+
 
         /* Swipe Elements */
         .item-card-wrapper {
@@ -1441,11 +1436,15 @@
         .swipe-action.left {
             background: var(--danger-color);
             justify-content: flex-end;
+            right: 0;
+            left: auto;
         }
 
         .swipe-action.right {
             background: var(--success-color);
             justify-content: flex-start;
+            left: 0;
+            right: auto;
         }
 
         .item-card {
@@ -3211,7 +3210,7 @@
                         const wrapper = createSwipeWrapper(cardMarkup,
                             () => deleteSale(s.id),
                             () => { /* No special right action for sales yet */ },
-                            'bottom', 'Удалить'
+                            'Удалить', 'Действие'
                         );
                         container.appendChild(wrapper);
                     });
@@ -3733,9 +3732,13 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const role = localStorage.getItem('vapeRole');
 
-            // 1. Show Admin Panel (Always in bypass mode for testing)
-            document.getElementById('adminPanel').style.display = 'block';
-            loadAdminData();
+            // 1. Show Admin Panel
+            if (role === 'system') {
+                document.getElementById('adminPanel').style.display = 'block';
+                loadAdminData();
+            } else {
+                document.getElementById('adminPanel').style.display = 'none';
+            }
 
             // 2. Check if Password is Set (Force Setup)
             // Only check if we are online and firebase is ready.
