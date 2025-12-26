@@ -92,6 +92,7 @@
             cursor: pointer;
             transition: all 0.3s;
             position: relative;
+            white-space: nowrap;
         }
 
         #appTitle.offline {
@@ -1373,7 +1374,7 @@
 
             <button id="addSaleBtn" class="main-btn" onclick="addSale()">ПРОДАТЬ</button>
 
-            <div class="history-header">
+            <div class="history-header" style="margin-top: 25px;">
                 <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
                     <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
                         <select id="sortType" class="badge toggle-btn" onchange="setSortType(this.value)"
@@ -1752,8 +1753,6 @@
     <div id="loadingOverlay">
         <div class="spinner"></div>
     </div>
-
-    </div> <!-- CLOSING CONTAINER HERE -->
 
     <!-- Navigation Tabs -->
     <div class="tabs">
@@ -4239,6 +4238,7 @@
 
         initSettings();
     </script>
+    </div> <!-- CONTAINER ENDS HERE -->
 </body>
 
 </html>
