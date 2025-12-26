@@ -1673,7 +1673,7 @@
 
             <div class="settings-row">
                 <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
-                    <span>🌙 Темная тема</span>
+                    <span>☀️ Светлая тема</span>
                 </div>
                 <label class="switch">
                     <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
@@ -2030,12 +2030,10 @@
     </script>
 
     <script>
-        // Auth Check - BYPASSED FOR LOCAL TESTING
-        /*
+        // Auth Check
         if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuth')) {
             window.location.href = 'login.html';
         }
-        */
 
         // Data State
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];

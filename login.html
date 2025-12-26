@@ -198,6 +198,24 @@
             transform: scale(0.98);
         }
 
+        .login-btn.loading {
+            pointer-events: none;
+            background: linear-gradient(90deg, #ffffff 0%, #00f2ff 50%, #ffffff 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+            color: #000;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -100% 0;
+            }
+
+            100% {
+                background-position: 100% 0;
+            }
+        }
+
         .error-message {
             color: #ff4d4d;
             font-size: 13px;
@@ -459,6 +477,11 @@
             const password = document.getElementById('passwordInput').value.trim();
             const dontRemember = document.getElementById('dontRemember').checked;
             const errorMessage = document.getElementById('errorMessage');
+            const loginBtn = document.getElementById('loginBtn');
+
+            // Set loading state
+            loginBtn.classList.add('loading');
+            loginBtn.innerText = 'ВХОД...';
 
             // 0. Load System Password if needed
             if (!SYSTEM_PASSWORD_HASH) {
@@ -490,6 +513,8 @@
                 errorMessage.classList.remove('show');
                 void errorMessage.offsetWidth;
                 errorMessage.classList.add('show');
+                loginBtn.classList.remove('loading');
+                loginBtn.innerText = 'ВОЙТИ';
                 return;
             }
 
@@ -517,6 +542,8 @@
                 return;
             } else {
                 // Failed attempt
+                loginBtn.classList.remove('loading');
+                loginBtn.innerText = 'ВОЙТИ';
                 handleFailedLogin();
                 return;
             }
