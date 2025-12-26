@@ -2466,6 +2466,7 @@
                         sales: sales,
                         inventory: inventory,
                         losses: losses,
+                        notes: getNotes(), // Sync Notes
                         updatedAt: now,
                         lastSyncBy: window.firebaseAuth.currentUser.email
                     });
@@ -2492,10 +2493,12 @@
                 sales = data.sales || [];
                 inventory = data.inventory || [];
                 losses = data.losses || [];
+                const cloudNotes = data.notes || [];
 
                 localStorage.setItem('vapeSales', JSON.stringify(sales));
                 localStorage.setItem('vapeInventory', JSON.stringify(inventory));
                 localStorage.setItem('vapeLosses', JSON.stringify(losses));
+                localStorage.setItem('vapeNotes', JSON.stringify(cloudNotes));
                 localStorage.setItem('vapeLastUpdate', cloudTime);
 
                 // Refresh UI
@@ -2503,7 +2506,13 @@
                 if (activeTab === 'sales') renderSales();
                 else if (activeTab === 'inventory') renderInventory();
                 else if (activeTab === 'losses') renderLosses();
+                if (activeTab === 'sales') renderSales();
+                else if (activeTab === 'inventory') renderInventory();
+                else if (activeTab === 'losses') renderLosses();
                 else if (activeTab === 'stats') renderStats();
+
+                // Always render notes just in case
+                renderNotes();
 
                 updateDatalist();
                 showToast("Данные обновлены 🔄");
@@ -2701,6 +2710,11 @@
                     updatedBy: 'admin'
                 });
 
+                // Save to local history
+                const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+                history.unshift({ date: new Date().toLocaleString(), type: 'change' });
+                localStorage.setItem('localPasswordHistory', JSON.stringify(history));
+
                 console.log('✅ Password successfully saved to Firebase!');
                 showToast('Пароль успешно изменен! 🔒');
                 closeChangePasswordModal();
@@ -2766,34 +2780,173 @@
             URL.revokeObjectURL(url);
         }
 
-        async function shareData() {
-            const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
-            /* simpler share for plain text summary if needed, but JSON is better for backup */
-            const shareData = {
-                title: 'Vape Tracker Backup',
-                text: 'Резервная копия данных Vape Tracker',
-                files: [
-                    new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
-                        type: 'text/plain',
-                    }),
-                ],
-            };
+        /* Admin & Force Setup Logic */
+        // Check triggers on load
+        document.addEventListener('DOMContentLoaded', async () => {
+            const role = localStorage.getItem('vapeRole');
 
-            if (navigator.canShare && navigator.canShare(shareData)) {
-                try {
-                    await navigator.share(shareData);
-                } catch (err) {
-                    alert('Ошибка при попытке поделиться: ' + err.message);
-                }
-            } else {
-                // Fallback to clipboard
-                try {
-                    await navigator.clipboard.writeText(textData);
-                    alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
-                } catch (err) {
-                    alert('Не удалось поделиться или скопировать.');
-                }
+            // 1. Show Admin Panel if System Role
+            if (role === 'system') {
+                document.getElementById('adminPanel').style.display = 'block';
+                loadAdminData();
             }
+
+            // 2. Check if Password is Set (Force Setup)
+            // Only check if we are online and firebase is ready.
+            // We'll use a loop to wait for firebaseDB
+            const checkInterval = setInterval(async () => {
+                if (window.firebaseDB && window.firebaseGetDoc) {
+                    clearInterval(checkInterval);
+                    const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                    try {
+                        const snap = await firebaseGetDoc(docRef);
+                        // If no doc or passwordHash is null, force setup
+                        if (!snap.exists() || !snap.data().passwordHash) {
+                            console.log('⚠️ Password not set! Forcing setup.');
+                            document.getElementById('forceSetupModal').style.display = 'flex';
+                        }
+                    } catch (e) { console.error('Force check error:', e); }
+                }
+            }, 500);
+        });
+
+        async function loadAdminData() {
+            const statusEl = document.getElementById('adminPassStatus');
+            const dateEl = document.getElementById('adminPassDate');
+
+            if (!window.firebaseDB) return;
+
+            try {
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                // Subscribe to real-time updates for admin panel
+                onSnapshot(docRef, (snap) => {
+                    if (snap.exists() && snap.data().passwordHash) {
+                        statusEl.textContent = 'УСТАНОВЛЕН ✅';
+                        statusEl.style.color = 'var(--success-color)';
+                        dateEl.textContent = new Date(snap.data().updatedAt).toLocaleString();
+                    } else {
+                        statusEl.textContent = 'НЕ УСТАНОВЛЕН ❌';
+                        statusEl.style.color = 'var(--danger-color)';
+                        dateEl.textContent = '-';
+                    }
+                });
+                renderAdminHistory();
+            } catch (e) { console.error(e); }
+        }
+
+        async function adminResetPassword() {
+            if (!confirm('ВНИМАНИЕ: Это сбросит пароль пользователя. Он сможет войти без пароля, но система потребует создать новый. Продолжить?')) return;
+
+            try {
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                await firebaseSetDoc(docRef, {
+                    passwordHash: null,
+                    updatedAt: Date.now(),
+                    updatedBy: 'system_reset'
+                });
+
+                // Log to local history
+                const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+                history.unshift({ date: new Date().toLocaleString(), type: 'reset_by_admin' });
+                localStorage.setItem('localPasswordHistory', JSON.stringify(history));
+
+                renderAdminHistory();
+                alert('Пароль успешно сброшен!');
+            } catch (e) { alert('Ошибка: ' + e.message); }
+        }
+
+        function renderAdminHistory() {
+            const list = document.getElementById('adminPassHistory');
+            const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+
+            if (history.length === 0) {
+                list.innerHTML = '<div style="opacity:0.5; text-align:center;">История пуста</div>';
+                return;
+            }
+
+            list.innerHTML = history.map(h => `
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 4px 0;">
+                    ${h.date} - ${h.type === 'reset_by_admin' ? 'СБРОС (Админ)' : 'Смена пользователем'}
+                </div>
+            `).join('');
+        }
+
+        function adminClearHistory() {
+            if (confirm('Очистить историю изменений пароля на этом устройстве?')) {
+                localStorage.removeItem('localPasswordHistory');
+                renderAdminHistory();
+            }
+        }
+
+        async function saveForcedPassword() {
+            const newPass = document.getElementById('forceNewPass').value;
+            const confirmPass = document.getElementById('forceConfirmPass').value;
+            const errorDiv = document.getElementById('forceSetupError');
+
+            if (!newPass) {
+                errorDiv.textContent = 'Введите пароль';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (newPass !== confirmPass) {
+                errorDiv.textContent = 'Пароли не совпадают';
+                errorDiv.style.display = 'block';
+                return;
+            }
+            if (newPass.length < 3) {
+                errorDiv.textContent = 'Минимум 3 символа';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const hash = await sha256(newPass);
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                await firebaseSetDoc(docRef, {
+                    passwordHash: hash,
+                    updatedAt: Date.now(),
+                    updatedBy: 'user_force_setup'
+                });
+
+                // Add to history
+                const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+                history.unshift({ date: new Date().toLocaleString(), type: 'change' });
+                localStorage.setItem('localPasswordHistory', JSON.stringify(history));
+
+                document.getElementById('forceSetupModal').style.display = 'none';
+                alert('Пароль установлен! 🎉');
+            } catch (e) {
+                errorDiv.textContent = 'Ошибка: ' + e.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+        const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
+        /* simpler share for plain text summary if needed, but JSON is better for backup */
+        const shareData = {
+            title: 'Vape Tracker Backup',
+            text: 'Резервная копия данных Vape Tracker',
+            files: [
+                new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
+                    type: 'text/plain',
+                }),
+            ],
+        };
+
+        if (navigator.canShare && navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                alert('Ошибка при попытке поделиться: ' + err.message);
+            }
+        } else {
+            // Fallback to clipboard
+            try {
+                await navigator.clipboard.writeText(textData);
+                alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
+            } catch (err) {
+                alert('Не удалось поделиться или скопировать.');
+            }
+        }
         }
 
         function importData(event) {
