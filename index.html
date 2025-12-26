@@ -1372,193 +1372,193 @@
             </div>
 
             <button id="addSaleBtn" class="main-btn" onclick="addSale()">ПРОДАТЬ</button>
-        </div>
 
-        <div class="history-header">
-            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-                <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
-                    <select id="sortType" class="badge toggle-btn" onchange="setSortType(this.value)"
-                        style="padding-right: 30px; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M2%204L6%208L10%204%22%20stroke%3D%22white%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 10px center; appearance: none; outline: none; border: 1px solid var(--glass-border); flex: 1; height: 44px;">
-                        <option value="date" style="background:#222; color:#fff">По дате</option>
-                        <option value="amount" style="background:#222; color:#fff">По сумме</option>
-                        <option value="name" style="background:#222; color:#fff">По названию</option>
-                        <option value="popular" style="background:#222; color:#fff">Популярные</option>
-                        <option value="profit_day" style="background:#222; color:#fff">Прибыльный день</option>
-                    </select>
-                    <button id="sortDirBtn" class="badge toggle-btn" onclick="toggleSortDir()"
-                        style="width: 44px; min-width: 44px; padding: 0; font-size: 16px; border: 1px solid var(--glass-border);">↓</button>
+            <div class="history-header">
+                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                    <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
+                        <select id="sortType" class="badge toggle-btn" onchange="setSortType(this.value)"
+                            style="padding-right: 30px; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M2%204L6%208L10%204%22%20stroke%3D%22white%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 10px center; appearance: none; outline: none; border: 1px solid var(--glass-border); flex: 1; height: 44px;">
+                            <option value="date" style="background:#222; color:#fff">По дате</option>
+                            <option value="amount" style="background:#222; color:#fff">По сумме</option>
+                            <option value="name" style="background:#222; color:#fff">По названию</option>
+                            <option value="popular" style="background:#222; color:#fff">Популярные</option>
+                            <option value="profit_day" style="background:#222; color:#fff">Прибыльный день</option>
+                        </select>
+                        <button id="sortDirBtn" class="badge toggle-btn" onclick="toggleSortDir()"
+                            style="width: 44px; min-width: 44px; padding: 0; font-size: 16px; border: 1px solid var(--glass-border);">↓</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div id="calendarWrapper" class="date-filter-wrapper">
+                        <div class="calendar-trigger" id="calIcon"></div>
+                        <input type="date" id="dateFilter" class="hidden-picker" onchange="onDateChange(this)"
+                            onfocus="document.getElementById('calIcon').classList.add('active')"
+                            onblur="document.getElementById('calIcon').classList.remove('active')">
+                    </div>
+                    <button class="clear-btn" onclick="clearSales()">ОЧИСТИТЬ</button>
                 </div>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <div id="calendarWrapper" class="date-filter-wrapper">
-                    <div class="calendar-trigger" id="calIcon"></div>
-                    <input type="date" id="dateFilter" class="hidden-picker" onchange="onDateChange(this)"
-                        onfocus="document.getElementById('calIcon').classList.add('active')"
-                        onblur="document.getElementById('calIcon').classList.remove('active')">
+            <div id="salesDisplay"></div>
+            <!-- salesPage ends here -->
+        </div>
+
+        <!-- Page: Inventory -->
+        <div id="inventoryPage" class="page">
+            <div class="input-card">
+                <div class="input-group">
+                    <input type="text" id="invName" placeholder="Ну рассказывай, чем закупился?" required>
                 </div>
-                <button class="clear-btn" onclick="clearSales()">ОЧИСТИТЬ</button>
+                <div class="input-group" style="display: flex; gap: 15px;">
+                    <input type="text" id="invStrength" placeholder="Крепость (необязательно)">
+                    <input type="number" id="invQty" placeholder="Шт." inputmode="numeric" pattern="[0-9]*" required>
+                </div>
+                <div class="input-group" style="display: flex; gap: 15px;">
+                    <input type="number" id="invCost" placeholder="Закуп (₽/шт)" inputmode="decimal" step="any"
+                        required>
+                    <input type="number" id="invPrice" placeholder="Цена продажи (₽)" inputmode="decimal" step="any"
+                        required>
+                </div>
+                <button class="main-btn" onclick="addInventory()">НА СКЛАД</button>
             </div>
-        </div>
-        <div id="salesDisplay"></div>
-        <!-- salesPage ends here -->
-    </div>
 
-    <!-- Page: Inventory -->
-    <div id="inventoryPage" class="page">
-        <div class="input-card">
-            <div class="input-group">
-                <input type="text" id="invName" placeholder="Ну рассказывай, чем закупился?" required>
+            <div class="history-header" style="justify-content: flex-end; margin-top: 10px; margin-bottom: 15px;">
+                <button class="clear-btn" onclick="clearInventory()"
+                    style="width: 44px; padding: 0; background: rgba(255, 61, 113, 0.08);"
+                    title="Очистить склад">🗑️</button>
             </div>
-            <div class="input-group" style="display: flex; gap: 15px;">
-                <input type="text" id="invStrength" placeholder="Крепость (необязательно)">
-                <input type="number" id="invQty" placeholder="Шт." inputmode="numeric" pattern="[0-9]*" required>
-            </div>
-            <div class="input-group" style="display: flex; gap: 15px;">
-                <input type="number" id="invCost" placeholder="Закуп (₽/шт)" inputmode="decimal" step="any" required>
-                <input type="number" id="invPrice" placeholder="Цена продажи (₽)" inputmode="decimal" step="any"
-                    required>
-            </div>
-            <button class="main-btn" onclick="addInventory()">НА СКЛАД</button>
-        </div>
 
-        <div class="history-header" style="justify-content: flex-end; margin-top: 10px; margin-bottom: 15px;">
-            <button class="clear-btn" onclick="clearInventory()"
-                style="width: 44px; padding: 0; background: rgba(255, 61, 113, 0.08);"
-                title="Очистить склад">🗑️</button>
-        </div>
+            <!-- Inventory Stats -->
+            <div class="stats-grid" style="margin-bottom: 25px;">
+                <div class="total-box">
+                    <div>Закуплено на</div>
+                    <span id="invTotalCost">0</span> ₽
+                </div>
+                <div class="total-box profit">
+                    <div>Ожид. выручка</div>
+                    <span id="invTotalRevenue">0</span> ₽
+                </div>
+            </div>
 
-        <!-- Inventory Stats -->
-        <div class="stats-grid" style="margin-bottom: 25px;">
-            <div class="total-box">
-                <div>Закуплено на</div>
-                <span id="invTotalCost">0</span> ₽
+            <div class="stats-grid" style="margin-bottom: 25px;">
+                <div class="total-box">
+                    <div>Количество товара</div>
+                    <span id="invTotalCount">0</span> шт.
+                </div>
+                <div class="total-box profit">
+                    <div>Разновидность</div>
+                    <span id="invTotalVariety">0</span> ед.
+                </div>
             </div>
-            <div class="total-box profit">
-                <div>Ожид. выручка</div>
-                <span id="invTotalRevenue">0</span> ₽
-            </div>
-        </div>
 
-        <div class="stats-grid" style="margin-bottom: 25px;">
-            <div class="total-box">
-                <div>Количество товара</div>
-                <span id="invTotalCount">0</span> шт.
-            </div>
-            <div class="total-box profit">
-                <div>Разновидность</div>
-                <span id="invTotalVariety">0</span> ед.
-            </div>
+            <div id="inventoryDisplay"></div>
         </div>
 
-        <div id="inventoryDisplay"></div>
-    </div>
+        <!-- Page: Debts -->
+        <div id="debtsPage" class="page">
+            <div class="input-card" style="padding: 30px;">
+                <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">РАБОТА С ДОЛГАМИ</h3>
 
-    <!-- Page: Debts -->
-    <div id="debtsPage" class="page">
-        <div class="input-card" style="padding: 30px;">
-            <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">РАБОТА С ДОЛГАМИ</h3>
+                <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff9800;">
+                    <div>Общий долг</div>
+                    <span id="totalDebtsSum" style="color: #ff9800;">0</span> ₽
+                </div>
 
-            <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff9800;">
-                <div>Общий долг</div>
-                <span id="totalDebtsSum" style="color: #ff9800;">0</span> ₽
-            </div>
+                <div id="debtsDisplay"></div>
 
-            <div id="debtsDisplay"></div>
-
-            <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
-                💡 Подсказка: Свайп вправо 🟢 — Оплачено<br>
-                Свайп влево 🔴 — Простить (в убытки)
-            </div>
-        </div>
-    </div>
-
-    <!-- Page: Losses -->
-    <div id="lossesPage" class="page">
-        <div class="input-card" style="padding: 30px;">
-            <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">УБЫТКИ / СПИСАНИЯ</h3>
-
-            <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff3b30;">
-                <div>Убыток</div>
-                <span id="lossesPageTotal" style="color: #ff3b30;">0</span> ₽
-            </div>
-
-            <button class="main-btn"
-                style="margin-bottom: 25px; background: linear-gradient(135deg, #ff3d71, #ff6b6b); box-shadow: 0 10px 20px rgba(255, 61, 113, 0.2);"
-                onclick="openLossModal()">ДОБАВИТЬ УБЫТОК</button>
-
-            <div id="lossesHistory"></div>
-
-            <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
-                Здесь учитываются бракованные товары, потерянные <br> или если решил сам попарить или подарить.
-            </div>
-        </div>
-    </div>
-
-    <!-- Page: Stats -->
-    <div id="statsPage" class="page">
-        <div class="stats-period-selector">
-            <button class="period-btn active" onclick="setStatsPeriod('day')">День</button>
-            <button class="period-btn" onclick="setStatsPeriod('week')">Неделя</button>
-            <button class="period-btn" onclick="setStatsPeriod('month')">Месяц</button>
-            <button class="period-btn" onclick="setStatsPeriod('all')">Всё</button>
-        </div>
-
-        <div class="stats-grid">
-            <div class="total-box">
-                <div>Выручка</div>
-                <span id="statRevenue">0</span> ₽
-            </div>
-            <div class="total-box profit">
-                <div>Прибыль</div>
-                <span id="statProfit">0</span> ₽
+                <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
+                    💡 Подсказка: Свайп вправо 🟢 — Оплачено<br>
+                    Свайп влево 🔴 — Простить (в убытки)
+                </div>
             </div>
         </div>
 
-        <!-- Chart Card -->
-        <div class="input-card" style="padding: 20px; overflow: hidden;">
-            <h4
-                style="margin: 0 0 15px 0; font-size: 12px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 2px; text-align: center;">
-                График выручки</h4>
-            <div style="height: 200px; width: 100%; position: relative;">
-                <canvas id="revenueChart"></canvas>
+        <!-- Page: Losses -->
+        <div id="lossesPage" class="page">
+            <div class="input-card" style="padding: 30px;">
+                <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">УБЫТКИ / СПИСАНИЯ</h3>
+
+                <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff3b30;">
+                    <div>Убыток</div>
+                    <span id="lossesPageTotal" style="color: #ff3b30;">0</span> ₽
+                </div>
+
+                <button class="main-btn"
+                    style="margin-bottom: 25px; background: linear-gradient(135deg, #ff3d71, #ff6b6b); box-shadow: 0 10px 20px rgba(255, 61, 113, 0.2);"
+                    onclick="openLossModal()">ДОБАВИТЬ УБЫТОК</button>
+
+                <div id="lossesHistory"></div>
+
+                <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
+                    Здесь учитываются бракованные товары, потерянные <br> или если решил сам попарить или подарить.
+                </div>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="total-box" style="--accent-color: #ff6b6b;">
-                <div>Убытки</div>
-                <span id="statLosses" style="color: #ff6b6b;">0</span> ₽
+        <!-- Page: Stats -->
+        <div id="statsPage" class="page">
+            <div class="stats-period-selector">
+                <button class="period-btn active" onclick="setStatsPeriod('day')">День</button>
+                <button class="period-btn" onclick="setStatsPeriod('week')">Неделя</button>
+                <button class="period-btn" onclick="setStatsPeriod('month')">Месяц</button>
+                <button class="period-btn" onclick="setStatsPeriod('all')">Всё</button>
             </div>
-            <div class="total-box" style="--accent-color: #ffd93d;">
-                <div>Продаж</div>
-                <span id="statSalesCount">0</span> шт.
-            </div>
-        </div>
 
-        <div
-            style="margin: 25px 0 15px 12px; font-size: 11px; font-weight: bold; opacity: 0.5; text-transform: uppercase; letter-spacing: 1.5px;">
-            СКЛАД СЕЙЧАС</div>
-        <div class="stats-grid" style="margin-bottom: 30px;">
-            <div class="total-box" style="--accent-color: var(--secondary-accent);">
-                <div>Стоимость</div>
-                <span id="statInvValue">0</span> ₽
+            <div class="stats-grid">
+                <div class="total-box">
+                    <div>Выручка</div>
+                    <span id="statRevenue">0</span> ₽
+                </div>
+                <div class="total-box profit">
+                    <div>Прибыль</div>
+                    <span id="statProfit">0</span> ₽
+                </div>
             </div>
-            <div class="total-box profit" style="--accent-color: var(--success-color);">
-                <div>Ожид. прибыль</div>
-                <span id="statInvProfit">0</span> ₽
+
+            <!-- Chart Card -->
+            <div class="input-card" style="padding: 20px; overflow: hidden;">
+                <h4
+                    style="margin: 0 0 15px 0; font-size: 12px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 2px; text-align: center;">
+                    График выручки</h4>
+                <div style="height: 200px; width: 100%; position: relative;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="total-box" style="--accent-color: #ff6b6b;">
+                    <div>Убытки</div>
+                    <span id="statLosses" style="color: #ff6b6b;">0</span> ₽
+                </div>
+                <div class="total-box" style="--accent-color: #ffd93d;">
+                    <div>Продаж</div>
+                    <span id="statSalesCount">0</span> шт.
+                </div>
+            </div>
+
+            <div
+                style="margin: 25px 0 15px 12px; font-size: 11px; font-weight: bold; opacity: 0.5; text-transform: uppercase; letter-spacing: 1.5px;">
+                СКЛАД СЕЙЧАС</div>
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="total-box" style="--accent-color: var(--secondary-accent);">
+                    <div>Стоимость</div>
+                    <span id="statInvValue">0</span> ₽
+                </div>
+                <div class="total-box profit" style="--accent-color: var(--success-color);">
+                    <div>Ожид. прибыль</div>
+                    <span id="statInvProfit">0</span> ₽
+                </div>
+            </div>
+
+            <div class="input-card" style="padding: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">🔥 ТОП товары</h3>
+                <div id="topProducts"></div>
+            </div>
+
+            <div class="input-card" style="padding: 20px;">
+                <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">📉 Не продаётся</h3>
+                <div id="worstProducts"></div>
             </div>
         </div>
-
-        <div class="input-card" style="padding: 20px;">
-            <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">🔥 ТОП товары</h3>
-            <div id="topProducts"></div>
-        </div>
-
-        <div class="input-card" style="padding: 20px;">
-            <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">📉 Не продаётся</h3>
-            <div id="worstProducts"></div>
-        </div>
-    </div>
     </div>
 
     <!-- Edit Inventory Modal -->
