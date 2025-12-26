@@ -1491,9 +1491,11 @@
                     🛡️ Админ Панель
                 </h4>
 
-                <div style="font-size: 13px; color: var(--text-color); margin-bottom: 15px;">
-                    <div><b>Статус пароля:</b> <span id="adminPassStatus">Загрузка...</span></div>
-                    <div><b>Обновлен:</b> <span id="adminPassDate">-</span></div>
+                <div
+                    style="font-size: 13px; color: var(--text-color); margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px;">
+                    <div><b>Последний вход:</b> <span id="adminLastSeen"
+                            style="color: var(--accent-color)">Загрузка...</span></div>
+                    <div><b>Устройство:</b> <span id="adminLastDevice" style="opacity: 0.7;">-</span></div>
                 </div>
 
                 <div style="margin-bottom: 15px;">
@@ -1506,14 +1508,25 @@
                 </div>
 
                 <div style="margin-top: 15px;">
-                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История изменений (Все устройства /
-                        Облако):</h5>
+                    <h5
+                        style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
+                        <span>📜 Лента действий:</span>
+                        <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
+                            onclick="clearAuditLog()">очистить</span>
+                    </h5>
+                    <div id="adminActivityLog"
+                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                        <!-- Activity log items -->
+                        <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
                     <div id="adminPassHistory"
                         style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
                         <!-- History items -->
                     </div>
-                    <button class="clear-btn" onclick="adminClearHistory()" style="font-size: 11px;">Очистить
-                        историю</button>
                 </div>
             </div>
 
@@ -2347,7 +2360,7 @@
         }
 
         // Global Actions
-        async function saveData() {
+        async function saveData(lastAction = null) {
             // Local save (fallback)
             const now = Date.now();
             localStorage.setItem('vapeSales', JSON.stringify(sales));
@@ -2358,14 +2371,35 @@
             // Cloud save - only if authenticated
             if (window.firebaseDB && window.firebaseAuth.currentUser) {
                 try {
-                    await firebaseSetDoc(firebaseDoc(window.firebaseDB, "tracker", "mainData"), {
+                    const docRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
+                    const snap = await firebaseGetDoc(docRef);
+                    let auditLog = [];
+                    if (snap.exists() && snap.data().auditLog) {
+                        auditLog = snap.data().auditLog;
+                    }
+
+                    if (lastAction) {
+                        const device = navigator.userAgent.includes('iPhone') ? 'iPhone' :
+                            navigator.userAgent.includes('Android') ? 'Android' : 'PC';
+                        auditLog.unshift({
+                            text: lastAction,
+                            time: now,
+                            device: device
+                        });
+                        // Keep only last 50 actions
+                        if (auditLog.length > 50) auditLog = auditLog.slice(0, 50);
+                    }
+
+                    await firebaseSetDoc(docRef, {
                         sales: sales,
                         inventory: inventory,
                         losses: losses,
                         updatedAt: now,
-                        lastSyncBy: window.firebaseAuth.currentUser.email
-                    });
-                    // showToast("Синхронизировано ☁️"); // Disabled by user request
+                        lastSyncBy: window.firebaseAuth.currentUser.email,
+                        lastSeenDevice: navigator.userAgent,
+                        auditLog: auditLog
+                    }, { merge: true });
+                    // showToast("Синхронизировано ☁️");
                 } catch (e) {
                     console.error("Firebase Save Error:", e);
                     showToast("Ошибка облака ⚠️", "error");
@@ -2657,26 +2691,59 @@
             if (!window.firebaseDB) return;
 
             try {
-                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
                 // Subscribe to real-time updates for admin panel
                 window.firebaseOnSnapshot(docRef, (snap) => {
-                    if (snap.exists() && snap.data().passwordHash) {
-                        statusEl.textContent = 'УСТАНОВЛЕН ✅';
-                        statusEl.style.color = 'var(--success-color)';
-                        dateEl.textContent = new Date(snap.data().updatedAt).toLocaleString();
-                        if (snap.data().history) {
-                            renderAdminHistory(snap.data().history);
-                        } else {
-                            renderAdminHistory([]);
+                    const data = snap.data() || {};
+                    if (data.passwordHash) {
+                        // ... password status removed from UI in prev step but we keep logic ...
+                    }
+
+                    // NEW: Activity Log and Last Seen
+                    if (data.updatedAt) {
+                        document.getElementById('adminLastSeen').textContent = new Date(data.updatedAt).toLocaleString('ru-RU');
+                        let device = 'Web';
+                        if (data.lastSeenDevice) {
+                            if (data.lastSeenDevice.includes('iPhone')) device = 'iPhone';
+                            else if (data.lastSeenDevice.includes('Android')) device = 'Android';
+                            else if (data.lastSeenDevice.includes('Mac')) device = 'Mac';
                         }
+                        document.getElementById('adminLastDevice').textContent = device;
+                    }
+
+                    if (data.auditLog) {
+                        renderAuditLog(data.auditLog);
                     } else {
-                        statusEl.textContent = 'НЕ УСТАНОВЛЕН ❌';
-                        statusEl.style.color = 'var(--danger-color)';
-                        dateEl.textContent = '-';
+                        document.getElementById('adminActivityLog').innerHTML = '<div style="opacity:0.5; text-align:center;">Лента пуста</div>';
+                    }
+
+                    if (data.history) {
+                        renderAdminHistory(data.history);
+                    } else {
                         renderAdminHistory([]);
                     }
                 });
             } catch (e) { console.error(e); }
+        }
+
+        function renderAuditLog(log) {
+            const list = document.getElementById('adminActivityLog');
+            list.innerHTML = log.map(item => `
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <span style="color: var(--accent-color)">•</span> ${item.text}
+                        <div style="font-size: 9px; opacity: 0.5;">${item.device}</div>
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.6;">${new Date(item.time).toLocaleTimeString('ru-RU')}</div>
+                </div>
+            `).join('');
+        }
+
+        async function clearAuditLog() {
+            if (!confirm('Очистить ленту действий?')) return;
+            try {
+                const docRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
+                await firebaseSetDoc(docRef, { auditLog: [] }, { merge: true });
+            } catch (e) { alert(e); }
         }
 
         async function adminResetPassword() {
