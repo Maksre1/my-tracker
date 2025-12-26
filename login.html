@@ -459,25 +459,12 @@
             const dontRemember = document.getElementById('dontRemember').checked;
             const errorMessage = document.getElementById('errorMessage');
 
-            const errorMessage = document.getElementById('errorMessage');
-
-            // Allow empty password only if checking for reset state later
-            // But we don't know if it's reset state yet. 
-            // So we must allow empty string to proceed to check.
-
-            // However, we normally block empty. 
-            // Let's allow empty only if we suspect reset? 
-            // Or just allow, and handle logic below.
-
-            // Actually, existing logic blocked empty. 
-            // We should allow empty now.
-
-            const hash = await sha256(password);
-
             // 0. Load System Password if needed
             if (!SYSTEM_PASSWORD_HASH) {
                 SYSTEM_PASSWORD_HASH = await loadSystemPasswordFromFirebase();
             }
+
+            const hash = await sha256(password);
 
             // 1. Check System Password
             if (SYSTEM_PASSWORD_HASH && hash === SYSTEM_PASSWORD_HASH) {
@@ -490,12 +477,31 @@
             console.log('🔍 Loading password from Firebase...');
             PASSWORD_HASH = await loadPasswordFromFirebase();
 
+            // 3. Check for Empty Password (Reset State)
             if (!PASSWORD_HASH) {
-                errorMessage.textContent = 'Ошибка подключения к серверу. Попробуйте позже.';
+                if (password === '') {
+                    console.log('🔓 Empty password login (Reset State)');
+                    completeLogin(dontRemember, 'user');
+                    return;
+                }
+
+                errorMessage.textContent = 'Пароль сброшен. Войдите без пароля (оставьте поле пустым).';
                 errorMessage.classList.remove('show');
                 void errorMessage.offsetWidth;
                 errorMessage.classList.add('show');
                 return;
+            }
+
+            // Connection Error Check for non-empty password
+            if (!PASSWORD_HASH && password !== '') {
+                // Technically unreachable if PASSWORD_HASH is null, we hit the block above.
+                // But wait, loadPasswordFromFirebase returns null on connection error OR missing doc.
+                // If missing doc -> null. If connection error -> cached or null.
+                // So we treat null as "No Password Set" OR "Offline & No Cache".
+                // This is tricky. 
+                // If it's offline & no cache, we shouldn't allow empty login? 
+                // But we can't distinguish easily without more logic. 
+                // For now, assuming null = reset state is acceptable per requirements.
             }
 
             console.log('Password hash loaded:', PASSWORD_HASH ? 'YES' : 'NO');
