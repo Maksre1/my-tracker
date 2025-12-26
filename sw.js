@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vape-tracker-v8';
+const CACHE_NAME = 'vape-tracker-v9';
 const ASSETS = [
   './',
   './index.html',
