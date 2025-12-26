@@ -2859,11 +2859,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const role = localStorage.getItem('vapeRole');
 
-            // 1. Show Admin Panel if System Role
-            if (role === 'system') {
-                document.getElementById('adminPanel').style.display = 'block';
-                loadAdminData();
-            }
+            // 1. Show Admin Panel (Always in bypass mode for testing)
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAdminData();
 
             // 2. Check if Password is Set (Force Setup)
             // Only check if we are online and firebase is ready.
