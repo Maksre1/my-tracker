@@ -1417,6 +1417,11 @@
                 ❓ КАК ПОЛЬЗОВАТЬСЯ?
             </button>
 
+            <button class="main-btn" onclick="logout()"
+                style="margin-top: 15px; background: rgba(255, 61, 113, 0.15); color: #ff3b30; border: 1.5px solid rgba(255, 61, 113, 0.3);">
+                🚪 ВЫЙТИ
+            </button>
+
             <div
                 style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
                 <h4
@@ -2300,6 +2305,25 @@
                 toast.style.transform = 'translateY(-20px)';
                 setTimeout(() => toast.remove(), 400);
             }, 3000);
+        }
+
+        function logout() {
+            if (confirm("Вы уверены, что хотите выйти?")) {
+                sessionStorage.removeItem('vapeAuth');
+                localStorage.removeItem('vapeAuthRemember');
+
+                // Sign out from Firebase if available
+                if (window.firebaseAuth) {
+                    window.firebaseAuth.signOut().then(() => {
+                        window.location.href = 'login.html';
+                    }).catch(err => {
+                        console.error("Firebase signout error:", err);
+                        window.location.href = 'login.html';
+                    });
+                } else {
+                    window.location.href = 'login.html';
+                }
+            }
         }
 
         function clearSales() {
