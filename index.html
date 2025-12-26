@@ -1348,7 +1348,7 @@
     </div>
 
     <div id="toast-container"></div>
-    <div class="sync-badge online" id="syncStatus"></div>
+    <div class="sync-badge" id="syncStatus"></div>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay">
@@ -1522,7 +1522,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
