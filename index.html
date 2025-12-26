@@ -1544,6 +1544,26 @@
         </div>
     </div>
 
+    <!-- Force Password Setup Modal -->
+    <div id="forceSetupModal" class="modal-overlay" style="z-index: 20000; background: var(--bg-color);">
+        <div class="modal-card">
+            <h3 style="letter-spacing: 2px; color: var(--danger-color);">⚠️ УСТАНОВИТЕ ПАРОЛЬ</h3>
+            <p style="font-size: 14px; opacity: 0.9; line-height: 1.5; margin-bottom: 20px;">
+                Ваш пароль был сброшен администратором. Для продолжения работы необходимо придумать новый пароль.
+            </p>
+            <div class="input-group">
+                <input type="password" id="forceNewPass" placeholder="Новый пароль">
+            </div>
+            <div class="input-group">
+                <input type="password" id="forceConfirmPass" placeholder="Повторите пароль">
+            </div>
+            <div id="forceSetupError" style="color: #ff3b30; font-size: 13px; margin-bottom: 15px; display: none;">
+            </div>
+
+            <button class="main-btn" onclick="saveForcedPassword()">СОХРАНИТЬ И ВОЙТИ</button>
+        </div>
+    </div>
+
     <!-- Help Page Modal -->
     <div id="helpPageModal"
         style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-color); z-index: 10000; overflow-y: auto;">
