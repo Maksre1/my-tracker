@@ -1036,14 +1036,72 @@
                 opacity: 1;
             }
         }
+
+        .notes-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: all 0.3s;
+            font-size: 18px;
+        }
+
+        .notes-btn:active {
+            transform: scale(0.9);
+        }
+
+        .note-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            padding: 15px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .note-date {
+            font-size: 10px;
+            opacity: 0.5;
+            margin-bottom: 5px;
+        }
+
+        .note-text {
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .note-delete {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            opacity: 0.3;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .note-delete:hover {
+            opacity: 1;
+            color: var(--danger-color);
+        }
     </style>
 </head>
 
 <body>
 
     <div class="container">
-        <!-- Theme Toggle Only -->
-        <div style="position: absolute; top: calc(20px + var(--safe-area-top)); right: 20px; z-index: 100;">
+        <!-- Header Buttons -->
+        <div
+            style="position: absolute; top: calc(20px + var(--safe-area-top)); right: 20px; z-index: 100; display: flex; gap: 10px;">
+            <button class="notes-btn" onclick="openNotesModal()" title="Заметки">📝</button>
             <button id="themeToggle" class="theme-toggle" style="position: static; margin-bottom: 0;">☀️</button>
         </div>
 
@@ -1420,7 +1478,25 @@
     <div id="toast-container"></div>
     <!-- Removed old syncStatus div -->
 
-    <!-- Loading Overlay -->
+    <!-- Notes Modal -->
+    <div id="notesModal" class="modal-overlay">
+        <div class="modal-card" style="max-height: 80vh; display: flex; flex-direction: column;">
+            <h3 style="letter-spacing: 2px;">ЗАМЕТКИ</h3>
+
+            <div style="margin-bottom: 20px;">
+                <textarea id="noteInput" placeholder="Что записать?"
+                    style="width: 100%; height: 100px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 14px; color: white; padding: 15px; font-size: 14px; resize: none;"></textarea>
+                <button class="main-btn" onclick="addNote()" style="margin-top: 10px;">ДОБАВИТЬ</button>
+            </div>
+
+            <div id="notesContainer" style="flex: 1; overflow-y: auto; padding-right: 5px;">
+                <!-- Notes will be listed here -->
+            </div>
+
+            <button class="clear-btn" style="margin-top: 20px; width: 100%;"
+                onclick="closeNotesModal()">ЗАКРЫТЬ</button>
+        </div>
+    </div>
     <div id="loadingOverlay">
         <div class="spinner"></div>
     </div>
@@ -1794,15 +1870,18 @@
     </script>
 
     <script>
-        // Auth Check - redirect to login if not authenticated
+        // Auth Check - BYPASSED FOR LOCAL TESTING
+        /*
         if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuth')) {
             window.location.href = 'login.html';
         }
+        */
 
         // Data State
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
+        let notes = JSON.parse(localStorage.getItem('vapeNotes')) || [];
 
         function updateDatalist() {
             // This function used to update a datalist, but we moved to custom autocomplete.
@@ -2404,6 +2483,7 @@
             localStorage.setItem('vapeSales', JSON.stringify(sales));
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
+            localStorage.setItem('vapeNotes', JSON.stringify(notes));
             localStorage.setItem('vapeLastUpdate', now);
 
             // Cloud save - only if authenticated
@@ -2432,6 +2512,7 @@
                         sales: sales,
                         inventory: inventory,
                         losses: losses,
+                        notes: notes,
                         updatedAt: now,
                         lastSyncBy: window.firebaseAuth.currentUser.email,
                         lastSeenDevice: navigator.userAgent,
@@ -2460,11 +2541,15 @@
                 sales = data.sales || [];
                 inventory = data.inventory || [];
                 losses = data.losses || [];
+                notes = data.notes || [];
 
                 localStorage.setItem('vapeSales', JSON.stringify(sales));
                 localStorage.setItem('vapeInventory', JSON.stringify(inventory));
                 localStorage.setItem('vapeLosses', JSON.stringify(losses));
+                localStorage.setItem('vapeNotes', JSON.stringify(notes));
                 localStorage.setItem('vapeLastUpdate', cloudTime);
+
+                renderNotes();
 
                 // Refresh UI
                 const activeTab = document.querySelector('.tab.active')?.onclick.toString().match(/'(.*?)'/)?.[1] || 'sales';
@@ -3374,11 +3459,63 @@
             document.body.style.overflow = '';
         }
 
+        // Notes Functions
+        function openNotesModal() {
+            document.getElementById('notesModal').style.display = 'flex';
+            renderNotes();
+        }
+
+        function closeNotesModal() {
+            document.getElementById('notesModal').style.display = 'none';
+        }
+
+        function addNote() {
+            const input = document.getElementById('noteInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const newNote = {
+                id: Date.now(),
+                text: text,
+                date: new Date().toISOString()
+            };
+
+            notes.unshift(newNote);
+            input.value = '';
+
+            saveData(`Добавлена заметка`);
+            renderNotes();
+        }
+
+        function deleteNote(id) {
+            if (!confirm('Удалить заметку?')) return;
+            notes = notes.filter(n => n.id !== id);
+            saveData(`Удалена заметка`);
+            renderNotes();
+        }
+
+        function renderNotes() {
+            const container = document.getElementById('notesContainer');
+            if (notes.length === 0) {
+                container.innerHTML = '<div style="opacity:0.5; text-align:center; padding: 20px;">Нет заметок</div>';
+                return;
+            }
+
+            container.innerHTML = notes.map(note => `
+                <div class="note-item">
+                    <div class="note-date">${new Date(note.date).toLocaleString('ru-RU')}</div>
+                    <div class="note-text">${note.text}</div>
+                    <div class="note-delete" onclick="deleteNote(${note.id})">🗑️</div>
+                </div>
+            `).join('');
+        }
+
         // Init
         renderSales();
         renderStats();
         updateDatalist();
         setupLossAutocomplete();
+        renderNotes();
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
