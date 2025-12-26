@@ -40,6 +40,8 @@
             --shadow-color: rgba(0, 0, 0, 0.5);
             --tab-active-bg: #ffffff;
             --tab-active-text: #000000;
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         /* NEW STYLES FOR LOGOUT */
@@ -1826,6 +1828,7 @@
                 // Wait for CSS transition (300ms)
                 setTimeout(() => {
                     activePage.style.display = 'none';
+                    window.scrollTo(0, 0);
 
                     renderData(); // Update data before showing
 
@@ -2506,7 +2509,7 @@
                 const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
                 const docSnap = await firebaseGetDoc(docRef);
 
-                let storedHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3'; // fallback
+                let storedHash = null;
                 if (docSnap.exists()) {
                     storedHash = docSnap.data().passwordHash;
                 }
@@ -2525,7 +2528,6 @@
                 // Save to Firebase with History (and Plaintext)
                 const newEntry = {
                     date: new Date().toISOString(),
-                    password: newPassword, // PLAINTEXT STORAGE
                     by: 'user'
                 };
 
@@ -2538,7 +2540,6 @@
 
                 await firebaseSetDoc(docRef, {
                     passwordHash: newHash,
-                    passwordPlain: newPassword, // PLAINTEXT STORAGE
                     history: currentHistory,
                     updatedAt: Date.now(),
                     updatedBy: 'admin'
@@ -2750,13 +2751,11 @@
 
                 currentHistory.unshift({
                     date: new Date().toISOString(),
-                    password: newPass, // PLAINTEXT
                     by: 'user_force_setup'
                 });
 
                 await firebaseSetDoc(docRef, {
                     passwordHash: hash,
-                    passwordPlain: newPass, // PLAINTEXT
                     history: currentHistory,
                     updatedAt: Date.now(),
                     updatedBy: 'user_force_setup'
