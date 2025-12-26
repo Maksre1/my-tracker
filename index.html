@@ -126,18 +126,86 @@
 
         body {
             background-color: var(--bg-color);
-            background-image:
-                var(--bg-overlay),
-                var(--bg-image);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
             color: var(--text-color);
             margin: 0;
             padding: calc(45px + var(--safe-area-top)) 20px calc(110px + var(--safe-area-bottom));
             min-height: 100vh;
             overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background-image: var(--bg-overlay), var(--bg-image);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            pointer-events: none;
+        }
+
+        /* Settings Toggle Switch */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .settings-row:last-child {
+            border-bottom: none;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: .4s;
+            border-radius: 24px;
+            border: 1px solid var(--glass-border);
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent-color);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
         }
 
         .container {
@@ -1142,9 +1210,7 @@
 
     <div class="container">
         <!-- Header Buttons -->
-        <div style="position: absolute; top: calc(20px + var(--safe-area-top)); right: 20px; z-index: 100;">
-            <button id="themeToggle" class="theme-toggle" style="position: static; margin-bottom: 0;">☀️</button>
-        </div>
+        <!-- Theme toggle moved to Settings in Info tab -->
 
         <!-- Floating Action Button -->
         <button class="notes-btn" onclick="openNotesModal()" title="Заметки">📝</button>
@@ -1598,6 +1664,32 @@
                 Общая стоимость склада</div>
             <div id="infoInventoryValue" style="font-size: 24px; font-weight: 700; color: #ffffff;">0 <span
                     style="font-size: 16px; font-weight: normal; opacity: 0.6;">₽</span></div>
+        </div>
+
+        <!-- Settings Card -->
+        <div class="input-card">
+            <h3 style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
+                НАСТРОЙКИ</h3>
+
+            <div class="settings-row">
+                <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                    <span>🌙 Темная тема</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-row">
+                <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                    <span>📝 Заметки</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="notesSwitch" onchange="toggleNotesSetting()">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
 
         <!-- Goal Card -->
@@ -3640,44 +3732,48 @@
         }
     </script>
     <script>
-        // Theme Logic
-        const toggleBtn = document.getElementById('themeToggle');
+        // Settings & Theme Logic
         const body = document.body;
+        const themeSwitch = document.getElementById('themeSwitch');
+        const notesSwitch = document.getElementById('notesSwitch');
+        const notesBtn = document.querySelector('.notes-btn');
 
-        function initTheme() {
+        function initSettings() {
+            // Theme
             const savedTheme = localStorage.getItem('theme');
-            // Default to dark if no preference, unless saved is explicitly light
-            // Or if system prefers light AND saved is NOT dark
             const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
 
-            if (savedTheme === 'light') {
-                body.classList.add('light-theme');
-                toggleBtn.textContent = '🌙';
-            } else if (savedTheme === 'dark') {
-                body.classList.remove('light-theme');
-                toggleBtn.textContent = '☀️';
-            } else if (systemPrefersLight) {
-                // System is light, but we default to dark per user request unless system overrides?
-                // User asked: "Default dark (if from device failed to get theme)". 
-                // But also "Site let use device theme".
-                // Logic: If no localStorage, check system. If system is light -> light. Else -> dark.
-                body.classList.add('light-theme');
-                toggleBtn.textContent = '🌙';
-            } else {
-                // Default dark
-                body.classList.remove('light-theme');
-                toggleBtn.textContent = '☀️';
-            }
+            let isLight = false;
+            if (savedTheme === 'light') isLight = true;
+            else if (savedTheme === 'dark') isLight = false;
+            else if (systemPrefersLight) isLight = true;
+
+            if (isLight) body.classList.add('light-theme');
+            else body.classList.remove('light-theme');
+
+            if (themeSwitch) themeSwitch.checked = isLight;
+
+            // Notes
+            const notesEnabled = localStorage.getItem('vapeNotesEnabled') !== 'false'; // Default to true
+            if (notesSwitch) notesSwitch.checked = notesEnabled;
+            if (notesBtn) notesBtn.style.display = notesEnabled ? 'flex' : 'none';
         }
 
-        toggleBtn.addEventListener('click', () => {
-            body.classList.toggle('light-theme');
-            const isLight = body.classList.contains('light-theme');
+        function toggleTheme() {
+            const isLight = themeSwitch.checked;
+            if (isLight) body.classList.add('light-theme');
+            else body.classList.remove('light-theme');
             localStorage.setItem('theme', isLight ? 'light' : 'dark');
-            toggleBtn.textContent = isLight ? '🌙' : '☀️';
-        });
+        }
 
-        initTheme();
+        function toggleNotesSetting() {
+            const enabled = notesSwitch.checked;
+            localStorage.setItem('vapeNotesEnabled', enabled);
+            if (notesBtn) notesBtn.style.display = enabled ? 'flex' : 'none';
+            showToast(enabled ? "Заметки включены" : "Заметки отключены");
+        }
+
+        initSettings();
     </script>
 </body>
 
