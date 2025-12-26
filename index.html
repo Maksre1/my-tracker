@@ -2185,15 +2185,6 @@
                                 <span style="font-size: 12px;">Ассистент включен</span>
                             </div>
 
-                            <!-- AI Toggle -->
-                            <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-                                <label class="switch">
-                                    <input type="checkbox" id="aiEnabledCheck" onchange="saveAISettings()">
-                                    <span class="slider round"></span>
-                                </label>
-                                <span style="font-size: 12px;">Ассистент включен</span>
-                            </div>
-
                             <!-- Model Select -->
                             <div style="margin-bottom: 10px;">
                                 <label style="font-size: 10px; display: block; margin-bottom: 3px;">Модель:</label>
@@ -2265,46 +2256,45 @@
                             style="width: 100%; background: rgba(255, 61, 113, 0.1); border: 1px solid rgba(255, 61, 113, 0.3); color: var(--danger-color); font-size: 10px; padding: 5px; border-radius: 6px;">Очистить
                             историю AI</button>
                     </div>
-                </div>
 
-                <div style="margin-top: 15px;">
-                    <h5
-                        style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
-                        <span>📜 Лента действий:</span>
-                        <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
-                            onclick="clearAuditLog()">очистить</span>
-                    </h5>
-                    <div id="adminActivityLog"
-                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <!-- Activity log items -->
-                        <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                    <div style="margin-top: 15px;">
+                        <h5
+                            style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
+                            <span>📜 Лента действий:</span>
+                            <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
+                                onclick="clearAuditLog()">очистить</span>
+                        </h5>
+                        <div id="adminActivityLog"
+                            style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <!-- Activity log items -->
+                            <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
+                        <div id="adminPassHistory"
+                            style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
+                            <!-- History items -->
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 15px;">
-                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
-                    <div id="adminPassHistory"
-                        style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
-                        <!-- History items -->
+                <div
+                    style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
+                    <h4
+                        style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+                        Безопасность данных:</h4>
+                    <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
+                        <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
+                            потерять данные.</p>
+                        <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и
+                            выберите
+                            файл бэкапа. Все настройки и история мгновенно вернутся.</p>
                     </div>
-                </div>
-            </div>
-
-            <div
-                style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
-                <h4
-                    style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
-                    Безопасность данных:</h4>
-                <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
-                    <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
-                        потерять данные.</p>
-                    <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и
-                        выберите
-                        файл бэкапа. Все настройки и история мгновенно вернутся.</p>
                 </div>
             </div>
         </div>
-    </div>
     </div>
 
     <!-- Chat Modal -->
@@ -3247,7 +3237,7 @@
                             <button class="delete-btn" onclick="deleteSale(${s.id})">×</button>
                         </div>
                     `;
-                    const wrapper = createSwipeWrapper(cardMarkup, () => deleteSale(s.id));
+                    const wrapper = createSwipeWrapper(cardMarkup, () => deleteSale(s.id), () => openSaleEdit(s.id), 'Удалить', 'Изменить');
                     display.appendChild(wrapper);
                 });
             }
@@ -5392,9 +5382,11 @@
         window.sendChatMessage = sendChatMessage;
         window.handleChatEnter = handleChatEnter;
         window.closeChatModal = closeChatModal;
+        window.openChatModal = openChatModal;
         window.saveAISettings = saveAISettings;
         window.clearChatHistory = clearChatHistory;
         window.toggleUserAI = toggleUserAI;
+        window.initAI = initAI;
 
     </script>
     </div> <!-- CONTAINER ENDS HERE -->
