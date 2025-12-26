@@ -2920,33 +2920,34 @@
                 errorDiv.style.display = 'block';
             }
         }
-        const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
-        /* simpler share for plain text summary if needed, but JSON is better for backup */
-        const shareData = {
-            title: 'Vape Tracker Backup',
-            text: 'Резервная копия данных Vape Tracker',
-            files: [
-                new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
-                    type: 'text/plain',
-                }),
-            ],
-        };
+        async function shareData() {
+            const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
+            /* simpler share for plain text summary if needed, but JSON is better for backup */
+            const shareData = {
+                title: 'Vape Tracker Backup',
+                text: 'Резервная копия данных Vape Tracker',
+                files: [
+                    new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
+                        type: 'text/plain',
+                    }),
+                ],
+            };
 
-        if (navigator.canShare && navigator.canShare(shareData)) {
-            try {
-                await navigator.share(shareData);
-            } catch (err) {
-                alert('Ошибка при попытке поделиться: ' + err.message);
+            if (navigator.canShare && navigator.canShare(shareData)) {
+                try {
+                    await navigator.share(shareData);
+                } catch (err) {
+                    alert('Ошибка при попытке поделиться: ' + err.message);
+                }
+            } else {
+                // Fallback to clipboard
+                try {
+                    await navigator.clipboard.writeText(textData);
+                    alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
+                } catch (err) {
+                    alert('Не удалось поделиться или скопировать.');
+                }
             }
-        } else {
-            // Fallback to clipboard
-            try {
-                await navigator.clipboard.writeText(textData);
-                alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
-            } catch (err) {
-                alert('Не удалось поделиться или скопировать.');
-            }
-        }
         }
 
         function importData(event) {
