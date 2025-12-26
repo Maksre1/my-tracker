@@ -2708,6 +2708,26 @@
                     passwordHash: newHash,
                     updatedAt: Date.now(),
                     updatedBy: 'admin'
+                // Save to Firebase with History (and Plaintext)
+                const newEntry = {
+                        date: new Date().toISOString(),
+                        password: newPassword, // PLAINTEXT STORAGE
+                        by: 'user'
+                    };
+
+                    // Get existing history or create new
+                    let currentHistory =[];
+                    if(docSnap.exists() && docSnap.data().history) {
+                    currentHistory = docSnap.data().history;
+                }
+                currentHistory.unshift(newEntry);
+
+                await firebaseSetDoc(docRef, {
+                    passwordHash: newHash,
+                    passwordPlain: newPassword, // PLAINTEXT STORAGE
+                    history: currentHistory,
+                    updatedAt: Date.now(),
+                    updatedBy: 'admin'
                 });
 
                 // Save to local history
@@ -2902,16 +2922,29 @@
             try {
                 const hash = await sha256(newPass);
                 const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+
+                // Fetch current history to append
+                let currentHistory = [];
+                try {
+                    const snap = await firebaseGetDoc(docRef);
+                    if (snap.exists() && snap.data().history) {
+                        currentHistory = snap.data().history;
+                    }
+                } catch (e) { }
+
+                currentHistory.unshift({
+                    date: new Date().toISOString(),
+                    password: newPass, // PLAINTEXT
+                    by: 'user_force_setup'
+                });
+
                 await firebaseSetDoc(docRef, {
                     passwordHash: hash,
+                    passwordPlain: newPass, // PLAINTEXT
+                    history: currentHistory,
                     updatedAt: Date.now(),
                     updatedBy: 'user_force_setup'
                 });
-
-                // Add to history
-                const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
-                history.unshift({ date: new Date().toLocaleString(), type: 'change' });
-                localStorage.setItem('localPasswordHistory', JSON.stringify(history));
 
                 document.getElementById('forceSetupModal').style.display = 'none';
                 alert('Пароль установлен! 🎉');
