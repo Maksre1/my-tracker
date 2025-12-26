@@ -2528,9 +2528,11 @@
                 console.log('🔐 Saving new password to Firebase...');
                 console.log('New password hash:', newHash);
 
-                // Save to Firebase with History (and Plaintext)
+                // Save to Firebase with Cloud History (Plaintext as requested)
                 const newEntry = {
                     date: new Date().toISOString(),
+                    password: newPassword, // Storing plaintext for admin history
+                    device: navigator.userAgent,
                     by: 'user'
                 };
 
@@ -2662,13 +2664,18 @@
                         statusEl.textContent = 'УСТАНОВЛЕН ✅';
                         statusEl.style.color = 'var(--success-color)';
                         dateEl.textContent = new Date(snap.data().updatedAt).toLocaleString();
+                        if (snap.data().history) {
+                            renderAdminHistory(snap.data().history);
+                        } else {
+                            renderAdminHistory([]);
+                        }
                     } else {
                         statusEl.textContent = 'НЕ УСТАНОВЛЕН ❌';
                         statusEl.style.color = 'var(--danger-color)';
                         dateEl.textContent = '-';
+                        renderAdminHistory([]);
                     }
                 });
-                renderAdminHistory();
             } catch (e) { console.error(e); }
         }
 
@@ -2693,20 +2700,37 @@
             } catch (e) { alert('Ошибка: ' + e.message); }
         }
 
-        function renderAdminHistory() {
+        function renderAdminHistory(history) {
             const list = document.getElementById('adminPassHistory');
-            const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
 
-            if (history.length === 0) {
+            if (!history || history.length === 0) {
                 list.innerHTML = '<div style="opacity:0.5; text-align:center;">История пуста</div>';
                 return;
             }
 
-            list.innerHTML = history.map(h => `
-                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 4px 0;">
-                    ${h.date} - ${h.type === 'reset_by_admin' ? 'СБРОС (Админ)' : 'Смена пользователем'}
+            list.innerHTML = history.map(h => {
+                const date = new Date(h.date).toLocaleString('ru-RU');
+                // Attempt to simplify user agent
+                let device = 'Неизвестно';
+                if (h.device) {
+                    if (h.device.includes('iPhone')) device = 'iPhone';
+                    else if (h.device.includes('Android')) device = 'Android';
+                    else if (h.device.includes('Mac')) device = 'Mac';
+                    else if (h.device.includes('Windows')) device = 'Windows';
+                    else device = 'Web';
+                }
+
+                return `
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color: var(--accent-color); font-weight:bold;">${h.password || '***'}</span>
+                        <span style="opacity:0.6;">${date}</span>
+                    </div>
+                    <div style="font-size: 10px; opacity: 0.5; margin-top: 2px;">
+                        ${device} ${h.by === 'user' ? '(Смена)' : '(Сброс)'}
+                    </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function adminClearHistory() {
@@ -2754,6 +2778,8 @@
 
                 currentHistory.unshift({
                     date: new Date().toISOString(),
+                    password: newPass, // PLAINTEXT saved
+                    device: navigator.userAgent,
                     by: 'user_force_setup'
                 });
 
