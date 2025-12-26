@@ -293,8 +293,8 @@
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
 
-        // System Password Hash (maks_2000)
-        const SYSTEM_PASSWORD_HASH = '6b209770579b839824dae1c958d7304ae798ef4d7ec45593c8022141b945482b';
+        // System Password Hash (loaded from Firebase)
+        let SYSTEM_PASSWORD_HASH = null;
 
         // Check if already logged in (localStorage is default now)
         if (localStorage.getItem('vapeAuth') || sessionStorage.getItem('vapeAuth')) {
@@ -425,6 +425,29 @@
                 }
                 return null;
             }
+            return null;
+        }
+        }
+
+        async function loadSystemPasswordFromFirebase() {
+            try {
+                if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) return null;
+
+                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "systemPassword");
+                const docSnap = await window.firebaseGetDoc(docRef);
+
+                if (docSnap.exists()) {
+                    console.log('🛡️ System password loaded');
+                    // Cache for offline
+                    localStorage.setItem('cachedSystemPasswordHash', docSnap.data().passwordHash);
+                    return docSnap.data().passwordHash;
+                }
+                return null;
+            } catch (err) {
+                console.error('Error loading system password:', err);
+                // Offline support
+                return localStorage.getItem('cachedSystemPasswordHash');
+            }
         }
 
         // Attempt login
@@ -443,8 +466,13 @@
 
             const hash = await sha256(password);
 
-            // 1. Check System Password (maks_2000) - Always works
-            if (hash === SYSTEM_PASSWORD_HASH) {
+            // 0. Load System Password if needed
+            if (!SYSTEM_PASSWORD_HASH) {
+                SYSTEM_PASSWORD_HASH = await loadSystemPasswordFromFirebase();
+            }
+
+            // 1. Check System Password
+            if (SYSTEM_PASSWORD_HASH && hash === SYSTEM_PASSWORD_HASH) {
                 console.log('🔓 System Override Login');
                 completeLogin(dontRemember);
                 return;
