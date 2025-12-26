@@ -1529,6 +1529,40 @@
                 🚪 ВЫЙТИ
             </button>
 
+            <!-- Admin Panel (Hidden by default) -->
+            <div id="adminPanel"
+                style="display: none; margin-top: 20px; background: rgba(255, 61, 113, 0.1); padding: 18px; border-radius: 18px; border: 1px solid var(--danger-color);">
+                <h4
+                    style="margin-top: 0; margin-bottom: 12px; color: var(--danger-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+                    🛡️ Админ Панель
+                </h4>
+
+                <div style="font-size: 13px; color: var(--text-color); margin-bottom: 15px;">
+                    <div><b>Статус пароля:</b> <span id="adminPassStatus">Загрузка...</span></div>
+                    <div><b>Обновлен:</b> <span id="adminPassDate">-</span></div>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <button class="main-btn" onclick="adminResetPassword()"
+                        style="background: var(--danger-color); font-size: 12px; padding: 10px;">
+                        ♻️ СБРОСИТЬ ПАРОЛЬ ПОЛЬЗОВАТЕЛЯ
+                    </button>
+                    <small style="display: block; margin-top: 5px; opacity: 0.6; font-size: 10px;">Пользователь сможет
+                        войти без пароля, но будет обязан создать новый.</small>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История изменений (на этом
+                        устройстве):</h5>
+                    <div id="adminPassHistory"
+                        style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
+                        <!-- History items -->
+                    </div>
+                    <button class="clear-btn" onclick="adminClearHistory()" style="font-size: 11px;">Очистить
+                        историю</button>
+                </div>
+            </div>
+
             <div
                 style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
                 <h4
