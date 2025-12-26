@@ -287,9 +287,8 @@
     </script>
 
     <script>
-        // SHA-256 hash of the correct password (FALLBACK)
-        const FALLBACK_PASSWORD_HASH = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
-        let PASSWORD_HASH = FALLBACK_PASSWORD_HASH; // Will be updated from Firebase if available
+        // SHA-256 hash of the correct password
+        let PASSWORD_HASH = null; // Stored in Firebase
 
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
@@ -393,9 +392,8 @@
         async function loadPasswordFromFirebase() {
             try {
                 if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) {
-                    console.log('⚠️ Firebase not initialized, using fallback password');
-                    console.log('Fallback hash:', FALLBACK_PASSWORD_HASH);
-                    return FALLBACK_PASSWORD_HASH;
+                    console.log('⚠️ Firebase not initialized yet');
+                    return null;
                 }
 
                 const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
@@ -404,24 +402,15 @@
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     console.log('✅ Password loaded from Firebase');
-                    console.log('Firebase hash:', data.passwordHash);
                     console.log('Updated at:', new Date(data.updatedAt).toLocaleString());
-                    return data.passwordHash || FALLBACK_PASSWORD_HASH;
+                    return data.passwordHash;
                 } else {
-                    console.log('⚠️ No password in Firebase, using fallback and saving current');
-                    console.log('Saving fallback hash:', FALLBACK_PASSWORD_HASH);
-                    // Save current password to Firebase for future use
-                    await window.firebaseSetDoc(docRef, {
-                        passwordHash: FALLBACK_PASSWORD_HASH,
-                        updatedAt: Date.now(),
-                        updatedBy: 'system'
-                    });
-                    return FALLBACK_PASSWORD_HASH;
+                    console.log('⚠️ No password found in Firebase');
+                    return null;
                 }
             } catch (err) {
                 console.error('❌ Error loading password from Firebase:', err);
-                console.log('Using fallback password');
-                return FALLBACK_PASSWORD_HASH;
+                return null;
             }
         }
 
@@ -439,10 +428,19 @@
                 return;
             }
 
-            // Load password from Firebase (with fallback)
+            // Load password from Firebase
             console.log('🔍 Loading password from Firebase...');
             PASSWORD_HASH = await loadPasswordFromFirebase();
-            console.log('Password hash to compare:', PASSWORD_HASH);
+
+            if (!PASSWORD_HASH) {
+                errorMessage.textContent = 'Ошибка подключения к серверу. Попробуйте позже.';
+                errorMessage.classList.remove('show');
+                void errorMessage.offsetWidth;
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            console.log('Password hash loaded:', PASSWORD_HASH ? 'YES' : 'NO');
 
             const hash = await sha256(password);
             console.log('Your password hash:', hash);
