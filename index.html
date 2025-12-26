@@ -2172,10 +2172,11 @@
                                 <label style="font-size: 10px; display: block; margin-bottom: 3px;">Модель:</label>
                                 <select id="aiModelSelect" onchange="saveAISettings()"
                                     style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; border-radius: 8px; padding: 5px; font-size: 11px;">
-                                    <option value="groq-llama3">Groq: llama3-70b (Free)</option>
-                                    <option value="groq-mixtral">Groq: mixtral-8x7b</option>
-                                    <option value="gemini-flash">Gemini 1.5 Flash</option>
-                                    <option value="gemini-pro">Gemini 1.5 Pro</option>
+                                    <option value="llama-3.3-70b-versatile">Groq: Llama 3.3 70B</option>
+                                    <option value="qwen/qwen3-32b">Groq: Qwen 3 32B</option>
+                                    <option value="openai/gpt-oss-120b">Groq: GPT-OSS 120B</option>
+                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                                     <option value="custom">Custom (см. ниже)</option>
                                 </select>
                             </div>
@@ -2184,83 +2185,92 @@
                             <input type="text" id="aiCustomModel" placeholder="ID Модели (напр. gemini-2.5)"
                                 style="width: 100%; margin-bottom: 8px; font-size: 11px; padding: 6px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 8px; color: white; display: none;">
 
-                            <!-- Primary Key -->
+                            <!-- Groq Key -->
                             <div style="margin-bottom: 10px;">
-                                <label style="font-size: 10px; display: block; margin-bottom: 3px;">Основной API
-                                    Key:</label>
-                                <input type="password" id="aiPrimaryKey" placeholder="gsk_..."
-                                    onchange="saveAISettings()"
-                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: var(--accent-color); border-radius: 8px; padding: 6px; font-size: 11px; outline: none;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 3px; color: #f59e0b;">🔑
+                                    Groq API Key (gsk_...):</label>
+                                <input type="password" id="aiGroqKey" placeholder="gsk_..." onchange="saveAISettings()"
+                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #f59e0b; border-radius: 8px; padding: 6px; font-size: 11px; outline: none;">
                             </div>
 
-                            <!-- Backup Keys -->
+                            <!-- Gemini Key -->
                             <div style="margin-bottom: 10px;">
-                                <label style="font-size: 10px; display: block; margin-bottom: 3px;">Резервные ключи (по
-                                    1 на строку):</label>
-                                <textarea id="aiBackupKeys" rows="3" placeholder="gsk_Key2&#10;gsk_Key3"
+                                <label style="font-size: 10px; display: block; margin-bottom: 3px; color: #3b82f6;">💎
+                                    Gemini API Key (AIza...):</label>
+                                <input type="password" id="aiGeminiKey" placeholder="AIza..."
                                     onchange="saveAISettings()"
-                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; border-radius: 8px; padding: 6px; font-size: 10px; outline: none; white-space: pre;"></textarea>
+                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #3b82f6; border-radius: 8px; padding: 6px; font-size: 11px; outline: none;">
+                            </div>
+
+                            <!-- Legacy Backup Keys (Hidden/Removed to simplify, or kept if really needed? User asked for backups. I will keep a simple textarea for extra keys if needed, but separate keys is cleaner. I'll remove backups for now to avoid confusion as separate keys solve the provider issue, and user didn't explicitly ask for 'backup keys per provider'). -->
+                            <!-- User asked for "backup api possibilities". I will add a generic backup field at the bottom just in case. -->
+                            <div style="margin-bottom: 10px;">
+                                <label
+                                    style="font-size: 10px; display: block; margin-bottom: 3px; opacity: 0.5;">Резервные
+                                    ключи (любые):</label>
+                                <textarea id="aiBackupKeys" rows="2" placeholder="Доп. ключи..."
+                                    onchange="saveAISettings()"
+                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: white; border-radius: 8px; padding: 6px; font-size: 10px; outline: none;"></textarea>
                             </div>
 
                             <button onclick="saveAISettings()"
                                 style="width: 100%; background: var(--success-color); color: black; font-weight: bold; font-size: 11px; padding: 8px; border-radius: 8px; border: none; margin-bottom: 15px;">💾
                                 СОХРАНИТЬ НАСТРОЙКИ</button>
 
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                                <span style="font-size: 11px;">Лимит (сегодня):</span>
-                                <span id="adminDailyCount" style="font-size: 12px; font-weight: bold;">0 / 20</span>
-                            </div>
 
-                            <h6 style="margin: 10px 0 5px 0; font-size: 10px; opacity: 0.6;">История запросов:</h6>
-                            <div id="adminChatHistory"
-                                style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; font-size: 10px; font-family: monospace; margin-bottom: 5px;">
-                                <div style="text-align: center; opacity: 0.4;">Пусто</div>
-                            </div>
-                            <button onclick="clearChatHistory()"
-                                style="width: 100%; background: rgba(255, 61, 113, 0.1); border: 1px solid rgba(255, 61, 113, 0.3); color: var(--danger-color); font-size: 10px; padding: 5px; border-radius: 6px;">Очистить
-                                историю AI</button>
+                            <span style="font-size: 11px;">Лимит (сегодня):</span>
+                            <span id="adminDailyCount" style="font-size: 12px; font-weight: bold;">0 / 20</span>
                         </div>
-                    </div>
 
-                    <div style="margin-top: 15px;">
-                        <h5
-                            style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
-                            <span>📜 Лента действий:</span>
-                            <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
-                                onclick="clearAuditLog()">очистить</span>
-                        </h5>
-                        <div id="adminActivityLog"
-                            style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                            <!-- Activity log items -->
-                            <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                        <h6 style="margin: 10px 0 5px 0; font-size: 10px; opacity: 0.6;">История запросов:</h6>
+                        <div id="adminChatHistory"
+                            style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 5px; border-radius: 8px; font-size: 10px; font-family: monospace; margin-bottom: 5px;">
+                            <div style="text-align: center; opacity: 0.4;">Пусто</div>
                         </div>
-                    </div>
-
-                    <div style="margin-top: 15px;">
-                        <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
-                        <div id="adminPassHistory"
-                            style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
-                            <!-- History items -->
-                        </div>
+                        <button onclick="clearChatHistory()"
+                            style="width: 100%; background: rgba(255, 61, 113, 0.1); border: 1px solid rgba(255, 61, 113, 0.3); color: var(--danger-color); font-size: 10px; padding: 5px; border-radius: 6px;">Очистить
+                            историю AI</button>
                     </div>
                 </div>
 
-                <div
-                    style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
-                    <h4
-                        style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
-                        Безопасность данных:</h4>
-                    <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
-                        <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
-                            потерять данные.</p>
-                        <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и
-                            выберите
-                            файл бэкапа. Все настройки и история мгновенно вернутся.</p>
+                <div style="margin-top: 15px;">
+                    <h5
+                        style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
+                        <span>📜 Лента действий:</span>
+                        <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
+                            onclick="clearAuditLog()">очистить</span>
+                    </h5>
+                    <div id="adminActivityLog"
+                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                        <!-- Activity log items -->
+                        <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
+                    <div id="adminPassHistory"
+                        style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
+                        <!-- History items -->
                     </div>
                 </div>
             </div>
+
+            <div
+                style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
+                <h4
+                    style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+                    Безопасность данных:</h4>
+                <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
+                    <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
+                        потерять данные.</p>
+                    <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и
+                        выберите
+                        файл бэкапа. Все настройки и история мгновенно вернутся.</p>
+                </div>
+            </div>
         </div>
+    </div>
     </div>
 
     <!-- Chat Modal -->
@@ -4677,12 +4687,12 @@
         // ==========================================
         // AI ASSISTANT LOGIC (GROQ + GEMINI + FIREBASE)
         // ==========================================
-        const DEFAULT_GROQ_KEY = ""; // Set via Admin Panel
-        const DAILY_MSG_LIMIT = 50; // Increased limit
+        const DAILY_MSG_LIMIT = 50;
         let aiConfig = {
-            model: 'groq-llama3',
+            model: 'llama-3.3-70b-versatile',
             customModel: '',
-            primaryKey: '',
+            groqKey: '',
+            geminiKey: '',
             backupKeys: []
         };
 
@@ -4700,7 +4710,9 @@
                 try {
                     const docSnap = await getDoc(doc(db, "settings", "ai_config"));
                     if (docSnap.exists()) {
-                        aiConfig = docSnap.data();
+                        // Merge strategies
+                        const cloudData = docSnap.data();
+                        aiConfig = { ...aiConfig, ...cloudData };
                         localStorage.setItem('vapeAIConfig', JSON.stringify(aiConfig));
                         updateAdminUI();
                     }
@@ -4716,15 +4728,17 @@
         function updateAdminUI() {
             const modelSel = document.getElementById('aiModelSelect');
             const customInp = document.getElementById('aiCustomModel');
-            const keyInp = document.getElementById('aiPrimaryKey');
+            const groqInp = document.getElementById('aiGroqKey');
+            const geminiInp = document.getElementById('aiGeminiKey');
             const backupsInp = document.getElementById('aiBackupKeys');
 
-            if (modelSel) modelSel.value = aiConfig.model;
+            if (modelSel) modelSel.value = aiConfig.model || 'llama-3.3-70b-versatile';
             if (customInp) {
                 customInp.value = aiConfig.customModel || '';
                 customInp.style.display = aiConfig.model === 'custom' ? 'block' : 'none';
             }
-            if (keyInp) keyInp.value = aiConfig.primaryKey || '';
+            if (groqInp) groqInp.value = aiConfig.groqKey || '';
+            if (geminiInp) geminiInp.value = aiConfig.geminiKey || '';
             if (backupsInp) backupsInp.value = (aiConfig.backupKeys || []).join('\n');
 
             // Toggle custom input visibility
@@ -4732,7 +4746,7 @@
                 modelSel.onchange = () => {
                     const val = modelSel.value;
                     customInp.style.display = val === 'custom' ? 'block' : 'none';
-                    saveAISettings(); // Auto save or wait for button
+                    saveAISettings(); // Auto save
                 };
             }
         }
@@ -4740,13 +4754,15 @@
         async function saveAISettings() {
             const model = document.getElementById('aiModelSelect').value;
             const custom = document.getElementById('aiCustomModel').value;
-            const key = document.getElementById('aiPrimaryKey').value.trim();
+            const groqKey = document.getElementById('aiGroqKey').value.trim();
+            const geminiKey = document.getElementById('aiGeminiKey').value.trim();
             const backups = document.getElementById('aiBackupKeys').value.split('\n').map(k => k.trim()).filter(k => k);
 
             aiConfig = {
-                model: model,
+                model,
                 customModel: custom,
-                primaryKey: key,
+                groqKey,
+                geminiKey,
                 backupKeys: backups
             };
 
@@ -4756,19 +4772,10 @@
             // Save Firebase
             try {
                 await setDoc(doc(db, "settings", "ai_config"), aiConfig);
-                showToast("Настройки AI сохранены в облаке ☁️");
+                showToast("Настройки обновлены ☁️");
             } catch (e) {
-                showToast("Сохранено локально (ошибка облака)", "error");
-                console.error(e);
+                showToast("Сохранено локально", "error");
             }
-        }
-
-        function getActiveModel() {
-            if (aiConfig.model === 'custom') return aiConfig.customModel;
-            if (aiConfig.model === 'groq-llama3') return 'llama3-70b-8192';
-            if (aiConfig.model === 'groq-mixtral') return 'mixtral-8x7b-32768';
-            // For Gemini, we map to actual model names if needed, but handled in provider logic
-            return aiConfig.model;
         }
 
         // --- Chat Logic ---
@@ -4804,7 +4811,7 @@
             const currentCount = usage[today] || 0;
 
             if (currentCount >= DAILY_MSG_LIMIT) {
-                addMessageToChat("ai", "Бро, лимит исчерпан. Ждем завтра 🛑");
+                addMessageToChat("ai", "Бро, лимит на сегодня всё. Спишемся завтра! 🌙");
                 input.value = '';
                 return;
             }
@@ -4815,60 +4822,63 @@
             input.value = '';
             const typingId = showTypingIndicator();
 
-            // 3. Prepare Context
+            // 3. System Prompt
             const revenue = document.getElementById('totalRevenue').innerText;
             const profit = document.getElementById('totalProfit').innerText;
             const products = JSON.parse(localStorage.getItem('inventory') || '[]').length;
 
             const contextSystem = `
-                ТЫ - AI ВЕЙП-ПОМОЩНИК. Стиль: дружеский, "бро", "йо".
-                Твоя база знаний: вейпы, жидкости, испарители, бизнес.
-                ДАННЫЕ МАГАЗИНА: Выручка ${revenue}, Прибыль ${profit}, Позиций ${products}.
-                Не отвечай на посторонние темы.
+                ТЫ - AI КОНСУЛЬТАНТ ВЕЙП-ШОПА.
+                Данные магазина:
+                - Выручка: ${revenue}
+                - Прибыль: ${profit}
+                - Товаров: ${products}
+                Твой стиль: дружеский, короткий, профессиональный (разбираешься в вейпах).
+                Если просят код или личные данные - вежливо отказывай.
             `;
 
-            // 4. API Call with Fallback
-            let success = false;
-            let aiReply = "";
+            try {
+                let success = false;
+                let aiReply = "";
 
-            // List of keys to try: Primary -> Default -> Backups
-            let keysToTry = [];
-            if (aiConfig.primaryKey) keysToTry.push(aiConfig.primaryKey);
-            keysToTry.push(DEFAULT_GROQ_KEY); // Always try default if others fail
-            if (aiConfig.backupKeys && aiConfig.backupKeys.length > 0) {
-                keysToTry = keysToTry.concat(aiConfig.backupKeys);
-            }
-            // Dedup
-            keysToTry = [...new Set(keysToTry)];
+                // Determine Provider based on Model ID
+                let modelID = aiConfig.model === 'custom' ? aiConfig.customModel : aiConfig.model;
+                if (!modelID) modelID = 'llama-3.3-70b-versatile';
 
-            for (const apiKey of keysToTry) {
-                try {
-                    const modelID = getActiveModel();
+                const isGemini = modelID.startsWith('gemini');
 
-                    // Determine Provider
-                    let responseText = "";
-                    if (aiConfig.model.startsWith('gemini')) {
-                        // Call Gemini
-                        responseText = await callGeminiAPI(apiKey, modelID, contextSystem, message);
-                    } else {
-                        // Call Groq (Default)
-                        responseText = await callGroqAPI(apiKey, modelID, contextSystem, message);
+                // Select Keys Config
+                let primaryKey = isGemini ? aiConfig.geminiKey : aiConfig.groqKey;
+                let keysToTry = [];
+                if (primaryKey) keysToTry.push(primaryKey);
+                if (aiConfig.backupKeys && aiConfig.backupKeys.length > 0) keysToTry.push(...aiConfig.backupKeys);
+
+                // Ensure at least one key exists (or empty string to trigger provider error)
+                if (keysToTry.length === 0) throw new Error(isGemini ? "Нет ключа Gemini" : "Нет ключа Groq");
+
+                // Loop through keys
+                for (const apiKey of keysToTry) {
+                    try {
+                        let text = "";
+                        if (isGemini) {
+                            text = await callGeminiAPI(apiKey, modelID, contextSystem, message);
+                        } else {
+                            text = await callGroqAPI(apiKey, modelID, contextSystem, message);
+                        }
+                        if (text) {
+                            aiReply = text;
+                            success = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.warn("Key failure:", e);
+                        continue;
                     }
-
-                    if (responseText) {
-                        aiReply = responseText;
-                        success = true;
-                        break; // Stop if successful
-                    }
-                } catch (e) {
-                    console.warn(`Key failed: ${apiKey.substring(0, 5)}...`, e);
-                    continue; // Try next key
                 }
-            }
 
-            removeTypingIndicator(typingId);
+                if (!success) throw new Error("Все ключи недействительны или ошибка сети.");
 
-            if (success) {
+                removeTypingIndicator(typingId);
                 addMessageToChat("ai", aiReply);
                 triggerHaptic('success');
 
@@ -4878,20 +4888,19 @@
                 updateAdminAIStatus();
 
                 // Log to Firebase
-                try {
-                    await addDoc(collection(db, "ai_chat_logs"), {
-                        timestamp: new Date(),
-                        userMessage: message,
-                        aiReply: aiReply,
-                        model: getActiveModel()
-                    });
-                } catch (e) { console.error("Log error", e); }
+                addDoc(collection(db, "ai_chat_logs"), {
+                    timestamp: new Date(),
+                    userMessage: message,
+                    aiReply: aiReply,
+                    model: modelID
+                }).catch(e => console.error(e));
 
-                // Local History for Admin View
+                // Local History
                 saveToChatHistory(message, aiReply);
 
-            } else {
-                addMessageToChat("ai", "Бро, все ключи отвалились или нет сети. 😔");
+            } catch (error) {
+                removeTypingIndicator(typingId);
+                addMessageToChat("ai", `Ошибка: ${error.message || "Сбой системы"}`);
                 triggerHaptic('error');
             }
         }
@@ -4904,7 +4913,7 @@
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: model || "llama3-70b-8192",
+                    model: model,
                     messages: [
                         { role: "system", content: system },
                         { role: "user", content: userMsg }
@@ -4913,23 +4922,22 @@
                     max_tokens: 1024
                 })
             });
-            if (!response.ok) throw new Error("Groq API Error: " + response.status);
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || "Groq Error");
+            }
             const data = await response.json();
             return data.choices[0].message.content;
         }
 
-        async function callGeminiAPI(key, modelRaw, system, userMsg) {
-            // Map simplified names to actual Gemini models if needed
-            let model = modelRaw;
-            if (modelRaw === 'gemini-flash') model = 'gemini-1.5-flash';
-            if (modelRaw === 'gemini-pro') model = 'gemini-1.5-pro';
-
-            // Gemini API format
+        async function callGeminiAPI(key, modelId, system, userMsg) {
+            let model = modelId;
+            // Gemini endpoint
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
 
             const body = {
                 contents: [{
-                    parts: [{ text: system + "\n\nUser Question: " + userMsg }] // System prompt hack for Gemini
+                    parts: [{ text: system + "\n\nUser Question: " + userMsg }]
                 }]
             };
 
@@ -4939,7 +4947,10 @@
                 body: JSON.stringify(body)
             });
 
-            if (!response.ok) throw new Error("Gemini API Error: " + response.status);
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error?.message || "Gemini Error");
+            }
             const data = await response.json();
             return data.candidates[0].content.parts[0].text;
         }
@@ -5022,6 +5033,7 @@
 
         // Start
         setTimeout(initAI, 1000); // Wait for DOM
+
     </script>
     </div> <!-- CONTAINER ENDS HERE -->
 </body>
