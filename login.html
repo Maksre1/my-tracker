@@ -293,6 +293,9 @@
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
 
+        // Clear any previous role on load
+        localStorage.removeItem('vapeRole');
+
         // System Password Hash (loaded from Firebase)
         let SYSTEM_PASSWORD_HASH = null;
 
@@ -456,11 +459,18 @@
             const dontRemember = document.getElementById('dontRemember').checked;
             const errorMessage = document.getElementById('errorMessage');
 
-            if (!password) {
-                errorMessage.textContent = 'Введите пароль';
-                errorMessage.classList.add('show');
-                return;
-            }
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Allow empty password only if checking for reset state later
+            // But we don't know if it's reset state yet. 
+            // So we must allow empty string to proceed to check.
+
+            // However, we normally block empty. 
+            // Let's allow empty only if we suspect reset? 
+            // Or just allow, and handle logic below.
+
+            // Actually, existing logic blocked empty. 
+            // We should allow empty now.
 
             const hash = await sha256(password);
 
@@ -472,7 +482,7 @@
             // 1. Check System Password
             if (SYSTEM_PASSWORD_HASH && hash === SYSTEM_PASSWORD_HASH) {
                 console.log('🔓 System Override Login');
-                completeLogin(dontRemember);
+                completeLogin(dontRemember, 'system');
                 return;
             }
 
@@ -505,7 +515,7 @@
             }
         }
 
-        function completeLogin(dontRemember) {
+        function completeLogin(dontRemember, role = 'user') {
             saveLockoutData({ attempts: 0, lockedUntil: null });
 
             if (dontRemember) {
@@ -515,6 +525,9 @@
                 localStorage.setItem('vapeAuth', 'true');
                 sessionStorage.removeItem('vapeAuth');
             }
+
+            // Save Role
+            localStorage.setItem('vapeRole', role);
 
             window.location.href = 'index.html';
         }
