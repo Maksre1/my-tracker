@@ -2062,6 +2062,16 @@
 
                 <div class="settings-row">
                     <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                        <span>🤖 AI Ассистент</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="userAISwitch" onchange="toggleUserAI()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="settings-row">
+                    <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
                         <span>📳 Вибрация (Haptic)</span>
                     </div>
                     <label class="switch">
@@ -2429,7 +2439,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, addDoc, collection, onSnapshot, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, collection, onSnapshot, query, orderBy, limit, getDocs, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -2457,6 +2467,10 @@
         window.collection = collection;
         window.doc = doc;
         window.auth = auth;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.limit = limit;
+        window.getDocs = getDocs;
 
         // Legacy compatibility
         window.firebaseDB = db;
@@ -4613,7 +4627,32 @@
         const notesSwitch = document.getElementById('notesSwitch');
         const notesBtn = document.querySelector('.notes-btn');
 
+        function toggleUserAI() {
+            const enabled = document.getElementById('userAISwitch').checked;
+            localStorage.setItem('vapeUserAIEnabled', enabled);
+            refreshAIVisibility();
+            showToast(enabled ? "AI включен" : "AI скрыт");
+        }
+
+        function refreshAIVisibility() {
+            const userEnabled = localStorage.getItem('vapeUserAIEnabled') !== 'false';
+            const adminEnabled = aiConfig.enabled !== false;
+            const btn = document.getElementById('aiFab');
+
+            if (btn) {
+                // Show if Admin allows AND User allows
+                btn.style.display = (adminEnabled && userEnabled) ? 'flex' : 'none';
+            }
+        }
+
         function initSettings() {
+            // ... existing theme/notes code
+
+            // AI User Setting
+            const userAI = localStorage.getItem('vapeUserAIEnabled') !== 'false';
+            const aiSw = document.getElementById('userAISwitch');
+            if (aiSw) aiSw.checked = userAI;
+            refreshAIVisibility();
             // Theme
             const savedTheme = localStorage.getItem('theme');
             const systemPrefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -5181,32 +5220,80 @@
             renderAdminChatHistory();
         }
 
-        function renderAdminChatHistory() {
+        async function renderAdminChatHistory() {
             const container = document.getElementById('adminChatHistory');
             if (!container) return;
 
-            const hist = JSON.parse(localStorage.getItem('vapeChatHistory') || '[]');
-            if (hist.length === 0) {
-                container.innerHTML = '<div style="text-align: center; opacity: 0.4;">Пусто</div>';
+            // Если Firebase не готов - показываем локальную историю как fallback
+            if (!window.firebaseDB || !window.getDocs || !window.query) {
+                const hist = JSON.parse(localStorage.getItem('vapeChatHistory') || '[]');
+                let html = '';
+                if (hist.length === 0) {
+                    html = '<div style="text-align: center; opacity: 0.4;">История пуста</div>';
+                } else {
+                    hist.slice(0, 10).forEach(h => {
+                        html += `<div><b>L:</b> ${h.user}</div>`;
+                    });
+                    html += '<div style="text-align:center; opacity:0.5; font-size:10px;">(Локальный кеш)</div>';
+                }
+                container.innerHTML = html;
                 return;
             }
 
-            let html = '';
-            hist.forEach(h => {
-                html += `
-                    <div style="margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
-                        <span style="opacity: 0.5;">[${h.time}]</span> <b>User:</b> ${h.user}<br>
-                        <span style="color: var(--accent-color);">AI:</span> ${h.ai.substring(0, 50)}...
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
-        }
+            container.innerHTML = '<div style="text-align:center; opacity:0.5; font-size:12px; padding:10px;">Загрузка облачной истории... ☁️</div>';
 
-        function clearChatHistory() {
-            if (confirm("Очистить локальную историю?")) {
-                localStorage.removeItem('vapeChatHistory');
-                renderAdminChatHistory();
+            try {
+                const q = window.query(
+                    window.collection(window.firebaseDB, "ai_chat_logs"),
+                    window.orderBy("timestamp", "desc"),
+                    window.limit(20)
+                );
+
+                const querySnapshot = await window.getDocs(q);
+
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<div style="text-align: center; opacity: 0.4; padding:10px;">История в облаке пуста</div>';
+                    return;
+                }
+
+                let html = '';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    let aiText = data.aiReply ? data.aiReply.replace(/\{"action":.*\}/g, '').trim() : '';
+                    if (!aiText && data.aiReply) aiText = "✔️ Выполнено действие";
+
+                    // Format Time safely
+                    let timeStr = '??:??';
+                    if (data.timestamp && data.timestamp.seconds) {
+                        timeStr = new Date(data.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    }
+
+                    html += `
+                        <div style="margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;">
+                             <div style="font-size: 10px; opacity: 0.4; margin-bottom: 4px; display:flex; justify-content:space-between;">
+                                <span>${timeStr}</span>
+                                <span>${data.model || 'AI'}</span>
+                             </div>
+                             <div style="margin-bottom: 4px; font-size: 13px;"><b>User:</b> <span style="opacity:0.9">${data.userMessage}</span></div>
+                             <div style="color: var(--accent-color); font-size: 12px; line-height: 1.4;">🤖 ${aiText}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+
+                // See next step for exposing these functions. For now, writing logic placeholder:
+                /*
+                const q = query(collection(db, "ai_chat_logs"), orderBy("timestamp", "desc"), limit(20));
+                const querySnapshot = await getDocs(q);
+                let html = '';
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    html += `...`;
+                });
+                container.innerHTML = html;
+                */
+            } catch (e) {
+                container.innerHTML = 'Ошибка загрузки истории';
             }
         }
 
