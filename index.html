@@ -1531,6 +1531,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCScA2lHy_jvWi3J7Lf2bLTje_HR-AHeZc",
@@ -1544,6 +1545,7 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
         enableIndexedDbPersistence(db).catch((err) => {
             console.warn('Persistence status:', err.code);
@@ -1553,8 +1555,23 @@
         window.firebaseDoc = doc;
         window.firebaseSetDoc = setDoc;
         window.firebaseGetDoc = getDoc;
+        window.firebaseAuth = auth;
 
-        window.addEventListener('online', () => updateSyncUI(true));
+        // Auto-login to Firebase using our hardcoded admin account
+        // This keeps the database private while keeping the UI login simple
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                console.log("Firebase Authenticated 🔓");
+                updateSyncUI(true);
+                loadCloudData(); // Load after auth
+            } else {
+                console.log("Authenticating Firebase...");
+                signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape")
+                    .catch(err => console.error("Firebase Auth Error:", err));
+            }
+        });
+
+        window.addEventListener('online', () => updateSyncUI(navigator.onLine && !!auth.currentUser));
         window.addEventListener('offline', () => updateSyncUI(false));
 
         function updateSyncUI(online) {
@@ -1583,8 +1600,7 @@
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
 
-        // Load cloud data on startup
-        setTimeout(loadCloudData, 1500);
+        // Load cloud data on startup removed from here, handled by onAuthStateChanged
         let sortType = localStorage.getItem('vapeSortType') || 'date';
         let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
         let statsPeriod = 'day';
@@ -2189,14 +2205,15 @@
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
             localStorage.setItem('vapeLastUpdate', now);
 
-            // Cloud save
-            if (window.firebaseDB) {
+            // Cloud save - only if authenticated
+            if (window.firebaseDB && window.firebaseAuth.currentUser) {
                 try {
                     await firebaseSetDoc(firebaseDoc(window.firebaseDB, "tracker", "mainData"), {
                         sales: sales,
                         inventory: inventory,
                         losses: losses,
-                        updatedAt: now
+                        updatedAt: now,
+                        lastSyncBy: window.firebaseAuth.currentUser.email
                     });
                     showToast("Синхронизировано ☁️");
                 } catch (e) {
