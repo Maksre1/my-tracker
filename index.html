@@ -500,10 +500,21 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .checkbox-group input:checked+.checkbox-custom {
-            background: #ffffff;
-            border-color: #ffffff;
+        .checkbox-group input:checked+.checkbox-custom,
+        .checkbox-group input:checked+.checkbox-custom.checkbox-accent,
+        .checkbox-group input:checked+.checkbox-custom.checkbox-warning {
+            background: #ffffff !important;
+            border-color: #ffffff !important;
             box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .checkbox-accent {
+            border-color: var(--accent-color);
+        }
+
+        .checkbox-warning {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.05);
         }
 
         .checkbox-custom::after {
@@ -1202,7 +1213,7 @@
             position: absolute;
             top: 0;
             bottom: 0;
-            width: 100%;
+            width: 120px;
             display: flex;
             align-items: center;
             padding: 0 25px;
@@ -1211,6 +1222,8 @@
             font-size: 13px;
             line-height: normal;
             border-radius: 22px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
         }
 
         .swipe-action.left {
@@ -1337,14 +1350,13 @@
 
                     <label class="checkbox-group" style="flex: 1; display: flex; justify-content: center;">
                         <input type="checkbox" id="showBuyer" onchange="toggleCustomerInput()">
-                        <div class="checkbox-custom" style="border-color: var(--accent-color);"></div>
+                        <div class="checkbox-custom checkbox-accent"></div>
                         <span>Клиент</span>
                     </label>
 
                     <label class="checkbox-group" style="flex: 1; display: flex; justify-content: flex-end;">
                         <input type="checkbox" id="isDebt" onchange="toggleCustomerInput(); toggleDebtColor();">
-                        <div class="checkbox-custom"
-                            style="border-color: #ff9800; background: rgba(255, 152, 0, 0.05);"></div>
+                        <div class="checkbox-custom checkbox-warning"></div>
                         <span style="color: #ff9800;">В долг</span>
                     </label>
                 </div>
@@ -2967,6 +2979,18 @@
                 if (Math.abs(currentX) > 150) currentX = currentX > 0 ? 150 + (currentX - 150) * 0.2 : -150 + (currentX + 150) * 0.2;
 
                 card.style.transform = `translateX(${currentX}px)`;
+
+                // Show appropriate swipe action
+                if (currentX > 10) {
+                    rightAction.style.opacity = '1';
+                    leftAction.style.opacity = '0';
+                } else if (currentX < -10) {
+                    leftAction.style.opacity = '1';
+                    rightAction.style.opacity = '0';
+                } else {
+                    leftAction.style.opacity = '0';
+                    rightAction.style.opacity = '0';
+                }
             }, { passive: true });
 
             card.addEventListener('touchend', () => {
@@ -2988,6 +3012,11 @@
                 } else {
                     card.style.transform = 'translateX(0)';
                 }
+
+                // Hide swipe actions
+                leftAction.style.opacity = '0';
+                rightAction.style.opacity = '0';
+
                 currentX = 0;
             });
 
