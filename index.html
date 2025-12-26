@@ -4848,9 +4848,20 @@
             const profit = document.getElementById('totalProfit').innerText;
             const products = JSON.parse(localStorage.getItem('inventory') || '[]').length;
 
-            const basePrompt = aiConfig.systemPrompt || 'Ты — дружелюбный помощник владельца вейп-шопа. Отвечай коротко и по делу.';
+            const basePrompt = aiConfig.systemPrompt || 'Ты — дружелюбный помощник владельца вейп-шопа.';
+
+            // ИНСТРУКЦИИ ПО УПРАВЛЕНИЮ (ДЛЯ AI)
+            const toolInstructions = `
+            ТЫ МОЖЕШЬ ВЫПОЛНЯТЬ ДЕЙСТВИЯ. Если юзер просит что-то сделать, добавь в КОНЕЦ сообщения JSON-блок (в одну строку):
+            - Добавить товар: {"action":"add_inventory","name":"Название","qty":10,"price":500}
+            - Удалить ВСЕХ должников: {"action":"clear_debts"}
+            - Добавить заметку: {"action":"add_note","text":"текст"}
+            - Записать продажу: {"action":"add_sale","name":"Товар","qty":1,"price":1000}
+            ПРИМЕР: "Ок, добавил 10 жиж Brusko на склад. {"action":"add_inventory","name":"Brusko","qty":10,"price":300}"
+            `;
+
             const dynamicContext = `\nДанные магазина сейчас: Выручка ${revenue}, Прибыль ${profit}, Товаров ${products}.`;
-            const contextSystem = basePrompt + dynamicContext;
+            const contextSystem = basePrompt + toolInstructions + dynamicContext;
 
             try {
                 let success = false;
@@ -4895,6 +4906,7 @@
 
                 removeTypingIndicator(typingId);
                 addMessageToChat("ai", aiReply);
+                processAIAction(aiReply); // <--- ВЫПОЛНЯЕМ КОМАНДЫ
                 triggerHaptic('success');
 
                 // Update Usage
@@ -4968,6 +4980,77 @@
             }
             const data = await response.json();
             return data.candidates[0].content.parts[0].text;
+        }
+
+        // Исполнитель действий AI
+        function processAIAction(text) {
+            try {
+                // Ищем JSON блок в тексте (формат {"action": ...})
+                const jsonMatch = text.match(/\{"action":.*\}/);
+                if (!jsonMatch) return;
+
+                const data = JSON.parse(jsonMatch[0]);
+                console.log("AI Action Triggered:", data);
+
+                switch (data.action) {
+                    case 'add_inventory':
+                        if (!data.name) return;
+                        const newItem = {
+                            id: Date.now(),
+                            name: data.name,
+                            qty: parseInt(data.qty || 1),
+                            cost: parseFloat(data.price || 0),
+                            price: parseFloat(data.price || 0) * 1.5, // Наценка 50%
+                            date: new Date().toLocaleDateString('ru-RU')
+                        };
+                        inventory.unshift(newItem);
+                        saveData(`AI: Добавлено на склад ${data.name}`);
+                        renderInventory();
+                        showToast(`📦 Склад: +${data.name}`);
+                        break;
+
+                    case 'clear_debts':
+                        const count = debts.length;
+                        debts = [];
+                        saveData(`AI: Список долгов полностью очищен`);
+                        renderDebts();
+                        showToast(`✅ Удалено должников: ${count}`);
+                        break;
+
+                    case 'add_note':
+                        if (!data.text) return;
+                        const newNote = {
+                            id: Date.now(),
+                            text: data.text,
+                            date: new Date().toISOString()
+                        };
+                        notes.unshift(newNote);
+                        saveData(`AI: Добавлена заметка`);
+                        renderNotes();
+                        showToast(`📝 Заметка добавлена`);
+                        break;
+
+                    case 'add_sale':
+                        if (!data.name) return;
+                        const sale = {
+                            id: Date.now(),
+                            name: data.name,
+                            qty: parseInt(data.qty || 1),
+                            price: parseFloat(data.price || 0),
+                            cost: 0,
+                            date: new Date().toLocaleDateString('ru-RU'),
+                            timestamp: Date.now()
+                        };
+                        sales.unshift(sale);
+                        saveData(`AI: Продажа ${data.name}`);
+                        renderSales();
+                        showToast(`💰 Продажа записана`);
+                        break;
+                }
+                triggerHaptic('success');
+            } catch (e) {
+                console.error("AI Action Parsing Error:", e);
+            }
         }
 
         function addMessageToChat(role, text) {
