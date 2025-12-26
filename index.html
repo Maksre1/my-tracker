@@ -1549,7 +1549,15 @@
         window.firebaseGetDoc = getDoc;
         window.firebaseAuth = auth;
 
-        // Auto-login to Firebase using our hardcoded admin account
+        // Obfuscated credentials decoder
+        const _0x4a2b = (s) => atob(s);
+        const _0x3c1d = () => {
+            const p1 = _0x4a2b('YWRtaW5AdmFwZS5jb20=');
+            const p2 = _0x4a2b('YXJ0ZW12YXBl');
+            return [p1, p2];
+        };
+
+        // Auto-login to Firebase
         let cloudSub = null;
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -1568,19 +1576,19 @@
                 });
             } else {
                 console.log("Authenticating Firebase...");
-                signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape")
+                const [e, p] = _0x3c1d();
+                signInWithEmailAndPassword(auth, e, p)
                     .catch(err => {
                         console.error("Firebase Auth Error:", err);
+                        alert("Ошибка подключения к базе:\n" + err.code + "\n" + err.message);
+                        // alert("Ошибка подключения к базе:\n" + err.code + "\n" + err.message); // Disable alert, use debug box
+                        logDebug("Auth Fail: " + err.code, true);
+                        document.getElementById('dbg-auth').innerText = "FAIL";
                         updateSyncUI(false);
                     });
             }
         });
 
-        window.addEventListener('online', () => {
-            if (!auth.currentUser) {
-                signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape");
-            }
-            updateSyncUI(navigator.onLine && !!auth.currentUser);
         });
         window.addEventListener('offline', () => updateSyncUI(false));
 
