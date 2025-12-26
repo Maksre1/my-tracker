@@ -2892,9 +2892,11 @@
         }
 
         function adminClearHistory() {
-            if (confirm('Очистить историю изменений пароля на этом устройстве?')) {
-                localStorage.removeItem('localPasswordHistory');
-                renderAdminHistory();
+            if (confirm('Очистить ОБЛАЧНУЮ историю паролей? Это действие необратимо.')) {
+                try {
+                    const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                    firebaseSetDoc(docRef, { history: [] }, { merge: true });
+                } catch (e) { alert('Ошибка: ' + e); }
             }
         }
 
