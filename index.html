@@ -1075,8 +1075,9 @@
                     <div id="autocompleteList" class="autocomplete-list"></div>
                 </div>
                 <div class="input-group" style="display: flex; gap: 15px;">
-                    <input type="number" id="saleQty" placeholder="Кол-во" required>
-                    <input type="number" id="salePrice" placeholder="Цена" required>
+                    <input type="number" id="saleQty" placeholder="Кол-во" inputmode="numeric" pattern="[0-9]*"
+                        required>
+                    <input type="number" id="salePrice" placeholder="Цена" inputmode="decimal" step="any" required>
                 </div>
 
                 <div style="margin-bottom: 20px;">
@@ -1131,11 +1132,13 @@
                 </div>
                 <div class="input-group" style="display: flex; gap: 15px;">
                     <input type="text" id="invStrength" placeholder="Крепость (необязательно)">
-                    <input type="number" id="invQty" placeholder="Шт." required>
+                    <input type="number" id="invQty" placeholder="Шт." inputmode="numeric" pattern="[0-9]*" required>
                 </div>
                 <div class="input-group" style="display: flex; gap: 15px;">
-                    <input type="number" id="invCost" placeholder="Закуп (₽/шт)" required>
-                    <input type="number" id="invPrice" placeholder="Цена продажи (₽)" required>
+                    <input type="number" id="invCost" placeholder="Закуп (₽/шт)" inputmode="decimal" step="any"
+                        required>
+                    <input type="number" id="invPrice" placeholder="Цена продажи (₽)" inputmode="decimal" step="any"
+                        required>
                 </div>
                 <button class="main-btn" onclick="addInventory()">НА СКЛАД</button>
             </div>
@@ -1249,8 +1252,8 @@
                 <input type="text" id="editStrength" placeholder="Крепость (необязательно)">
             </div>
             <div class="input-group" style="display: flex; gap: 15px;">
-                <input type="number" id="editCost" placeholder="Закуп">
-                <input type="number" id="editPrice" placeholder="Продажа">
+                <input type="number" id="editCost" placeholder="Закуп" inputmode="decimal" step="any">
+                <input type="number" id="editPrice" placeholder="Продажа" inputmode="decimal" step="any">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="main-btn" style="flex: 2;" onclick="saveEdit()">СОХРАНИТЬ</button>
@@ -1268,8 +1271,8 @@
                 <input type="text" id="editSaleName" placeholder="Название">
             </div>
             <div class="input-group" style="display: flex; gap: 10px;">
-                <input type="number" id="editSaleQty" placeholder="Кол-во">
-                <input type="number" id="editSalePrice" placeholder="Цена">
+                <input type="number" id="editSaleQty" placeholder="Кол-во" inputmode="numeric" pattern="[0-9]*">
+                <input type="number" id="editSalePrice" placeholder="Цена" inputmode="decimal" step="any">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="main-btn" style="flex: 2;" onclick="saveSaleEdit()">СОХРАНИТЬ</button>
@@ -1289,8 +1292,8 @@
                 </div>
             </div>
             <div class="input-group" style="display: flex; gap: 15px;">
-                <input type="number" id="lossQty" placeholder="Кол-во">
-                <input type="number" id="lossCost" placeholder="Закуп цена">
+                <input type="number" id="lossQty" placeholder="Кол-во" inputmode="numeric" pattern="[0-9]*">
+                <input type="number" id="lossCost" placeholder="Закуп цена" inputmode="decimal" step="any">
             </div>
             <div class="input-group">
                 <select id="lossReason"
@@ -1331,8 +1334,8 @@
                 <input type="text" id="editLossName" placeholder="Название товара">
             </div>
             <div class="input-group" style="display: flex; gap: 15px;">
-                <input type="number" id="editLossQty" placeholder="Кол-во">
-                <input type="number" id="editLossCost" placeholder="Закуп цена">
+                <input type="number" id="editLossQty" placeholder="Кол-во" inputmode="numeric" pattern="[0-9]*">
+                <input type="number" id="editLossCost" placeholder="Закуп цена" inputmode="decimal" step="any">
             </div>
             <div class="input-group">
                 <select id="editLossReason"
@@ -2471,9 +2474,9 @@
         }
 
         async function saveNewPassword() {
-            const currentPassword = document.getElementById('currentPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+            const currentPassword = document.getElementById('currentPassword').value.trim();
+            const newPassword = document.getElementById('newPassword').value.trim();
+            const confirmPassword = document.getElementById('confirmPassword').value.trim();
             const errorDiv = document.getElementById('passwordChangeError');
 
             // Validation
@@ -2716,8 +2719,8 @@
         }
 
         async function saveForcedPassword() {
-            const newPass = document.getElementById('forceNewPass').value;
-            const confirmPass = document.getElementById('forceConfirmPass').value;
+            const newPass = document.getElementById('forceNewPass').value.trim();
+            const confirmPass = document.getElementById('forceConfirmPass').value.trim();
             const errorDiv = document.getElementById('forceSetupError');
 
             if (!newPass) {

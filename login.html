@@ -456,7 +456,7 @@
         async function attemptLogin() {
             if (isLockedOut()) return;
 
-            const password = document.getElementById('passwordInput').value;
+            const password = document.getElementById('passwordInput').value.trim();
             const dontRemember = document.getElementById('dontRemember').checked;
             const errorMessage = document.getElementById('errorMessage');
 
