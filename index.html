@@ -1037,6 +1037,43 @@
             }
         }
 
+        .goal-container {
+            margin-top: -10px;
+            margin-bottom: 25px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px 15px;
+            border-radius: 18px;
+            border: 1px solid var(--glass-border);
+            display: none;
+            /* Hidden by default */
+        }
+
+        .goal-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .progress-bg {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-color);
+            border-radius: 3px;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s ease;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+        }
+
         .notes-btn {
             position: fixed;
             bottom: calc(100px + var(--safe-area-bottom));
@@ -1128,6 +1165,16 @@
             <div class="total-box profit">
                 <div>Прибыль</div>
                 <span id="totalProfit" style="color: var(--success-color);">0</span> ₽
+            </div>
+        </div>
+
+        <div id="goalContainer" class="goal-container">
+            <div class="goal-text">
+                <span style="opacity: 0.7;">Цель</span>
+                <span id="goalProgressText" style="color: var(--accent-color);">0 / 0 ₽</span>
+            </div>
+            <div class="progress-bg">
+                <div id="goalProgressBar" class="progress-bar"></div>
             </div>
         </div>
 
@@ -1553,6 +1600,20 @@
                     style="font-size: 16px; font-weight: normal; opacity: 0.6;">₽</span></div>
         </div>
 
+        <!-- Goal Card -->
+        <div class="input-card">
+            <h3 style="margin-top: 0; margin-bottom: 15px; text-align: center; letter-spacing: 2px; font-size: 14px;">🎯
+                МОЯ ЦЕЛЬ</h3>
+            <div class="input-group">
+                <input type="number" id="goalInput" placeholder="Установить сумму (₽)" oninput="updateGoal()"
+                    inputmode="numeric"
+                    style="text-align: center; font-size: 18px; font-weight: bold; color: var(--accent-color);">
+            </div>
+            <div style="font-size: 10px; opacity: 0.5; text-align: center; line-height: 1.4;">
+                Цель привязывается к выручке текущего фильтра (день, месяц и т.д.)
+            </div>
+        </div>
+
         <!-- Data Management Card -->
         <div class="input-card">
             <h3 style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
@@ -1889,6 +1950,7 @@
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
         let notes = JSON.parse(localStorage.getItem('vapeNotes')) || [];
+        let financialGoal = parseInt(localStorage.getItem('vapeFinancialGoal')) || 0;
 
         function updateDatalist() {
             // This function used to update a datalist, but we moved to custom autocomplete.
@@ -2390,6 +2452,9 @@
             if (totalRevEl) totalRevEl.innerText = totalRev.toLocaleString('ru-RU');
             if (totalProfEl) totalProfEl.innerText = totalProf.toLocaleString('ru-RU');
 
+            // Update Goal Progress
+            updateGoalUI(totalRev);
+
             if (filteredSales.length === 0) {
                 display.innerHTML = `<div class="empty-state">${filterDate ? 'На эту дату пусто' : 'Пока нет продаж'}</div>`;
                 return;
@@ -2491,6 +2556,7 @@
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
             localStorage.setItem('vapeNotes', JSON.stringify(notes));
+            localStorage.setItem('vapeFinancialGoal', financialGoal);
             localStorage.setItem('vapeLastUpdate', now);
 
             // Cloud save - only if authenticated
@@ -2520,6 +2586,7 @@
                         inventory: inventory,
                         losses: losses,
                         notes: notes,
+                        financialGoal: financialGoal,
                         updatedAt: now,
                         lastSyncBy: window.firebaseAuth.currentUser.email,
                         lastSeenDevice: navigator.userAgent,
@@ -2549,13 +2616,16 @@
                 inventory = data.inventory || [];
                 losses = data.losses || [];
                 notes = data.notes || [];
+                financialGoal = data.financialGoal || 0;
 
                 localStorage.setItem('vapeSales', JSON.stringify(sales));
                 localStorage.setItem('vapeInventory', JSON.stringify(inventory));
                 localStorage.setItem('vapeLosses', JSON.stringify(losses));
                 localStorage.setItem('vapeNotes', JSON.stringify(notes));
+                localStorage.setItem('vapeFinancialGoal', financialGoal);
                 localStorage.setItem('vapeLastUpdate', cloudTime);
 
+                document.getElementById('goalInput').value = financialGoal || '';
                 renderNotes();
 
                 // Refresh UI
@@ -3517,7 +3587,48 @@
             `).join('');
         }
 
+        // Goal Functions
+        function updateGoal() {
+            const input = document.getElementById('goalInput');
+            financialGoal = parseInt(input.value) || 0;
+            saveData(`Обновлена финансовая цель`);
+            renderSales(); // Refresh stats with new goal progress
+        }
+
+        function updateGoalUI(currentRevenue) {
+            const container = document.getElementById('goalContainer');
+            const progressSpan = document.getElementById('goalProgressText');
+            const bar = document.getElementById('goalProgressBar');
+
+            if (!financialGoal || financialGoal <= 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            container.style.display = 'block';
+            const percent = Math.min(100, (currentRevenue / financialGoal) * 100);
+
+            progressSpan.textContent = `${currentRevenue.toLocaleString('ru-RU')} / ${financialGoal.toLocaleString('ru-RU')} ₽`;
+            bar.style.width = percent + '%';
+
+            // Color logic
+            if (percent < 40) {
+                bar.style.background = 'var(--danger-color)';
+                bar.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.3)';
+            } else if (percent < 80) {
+                bar.style.background = '#ffd93d'; // Yellow/Orange
+                bar.style.boxShadow = '0 0 10px rgba(255, 217, 61, 0.3)';
+            } else if (percent < 100) {
+                bar.style.background = 'var(--accent-color)';
+                bar.style.boxShadow = '0 0 10px rgba(0, 242, 255, 0.3)';
+            } else {
+                bar.style.background = 'var(--success-color)';
+                bar.style.boxShadow = '0 0 15px rgba(0, 240, 170, 0.5)';
+            }
+        }
+
         // Init
+        document.getElementById('goalInput').value = financialGoal || '';
         renderSales();
         renderStats();
         updateDatalist();
