@@ -2202,8 +2202,15 @@
                                     style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #3b82f6; border-radius: 8px; padding: 6px; font-size: 11px; outline: none;">
                             </div>
 
-                            <!-- Legacy Backup Keys (Hidden/Removed to simplify, or kept if really needed? User asked for backups. I will keep a simple textarea for extra keys if needed, but separate keys is cleaner. I'll remove backups for now to avoid confusion as separate keys solve the provider issue, and user didn't explicitly ask for 'backup keys per provider'). -->
-                            <!-- User asked for "backup api possibilities". I will add a generic backup field at the bottom just in case. -->
+                            <!-- System Prompt -->
+                            <div style="margin-bottom: 10px;">
+                                <label style="font-size: 10px; display: block; margin-bottom: 3px; color: #10b981;">📜
+                                    Системные инструкции (Prompt):</label>
+                                <textarea id="aiSystemPrompt" rows="3" placeholder="Ты — помощник в вейп-шопе..."
+                                    onchange="saveAISettings()"
+                                    style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; border-radius: 8px; padding: 6px; font-size: 11px; outline: none;"></textarea>
+                            </div>
+
                             <div style="margin-bottom: 10px;">
                                 <label
                                     style="font-size: 10px; display: block; margin-bottom: 3px; opacity: 0.5;">Резервные
@@ -4693,6 +4700,7 @@
             customModel: '',
             groqKey: '',
             geminiKey: '',
+            systemPrompt: 'Ты — дружелюбный помощник владельца вейп-шопа. Отвечай коротко и по делу.',
             backupKeys: []
         };
 
@@ -4730,6 +4738,7 @@
             const customInp = document.getElementById('aiCustomModel');
             const groqInp = document.getElementById('aiGroqKey');
             const geminiInp = document.getElementById('aiGeminiKey');
+            const promptInp = document.getElementById('aiSystemPrompt');
             const backupsInp = document.getElementById('aiBackupKeys');
 
             if (modelSel) modelSel.value = aiConfig.model || 'llama-3.3-70b-versatile';
@@ -4739,6 +4748,7 @@
             }
             if (groqInp) groqInp.value = aiConfig.groqKey || '';
             if (geminiInp) geminiInp.value = aiConfig.geminiKey || '';
+            if (promptInp) promptInp.value = aiConfig.systemPrompt || '';
             if (backupsInp) backupsInp.value = (aiConfig.backupKeys || []).join('\n');
 
             // Toggle custom input visibility
@@ -4756,6 +4766,7 @@
             const custom = document.getElementById('aiCustomModel').value;
             const groqKey = document.getElementById('aiGroqKey').value.trim();
             const geminiKey = document.getElementById('aiGeminiKey').value.trim();
+            const systemPrompt = document.getElementById('aiSystemPrompt').value.trim();
             const backups = document.getElementById('aiBackupKeys').value.split('\n').map(k => k.trim()).filter(k => k);
 
             aiConfig = {
@@ -4763,6 +4774,7 @@
                 customModel: custom,
                 groqKey,
                 geminiKey,
+                systemPrompt,
                 backupKeys: backups
             };
 
@@ -4827,15 +4839,9 @@
             const profit = document.getElementById('totalProfit').innerText;
             const products = JSON.parse(localStorage.getItem('inventory') || '[]').length;
 
-            const contextSystem = `
-                ТЫ - AI КОНСУЛЬТАНТ ВЕЙП-ШОПА.
-                Данные магазина:
-                - Выручка: ${revenue}
-                - Прибыль: ${profit}
-                - Товаров: ${products}
-                Твой стиль: дружеский, короткий, профессиональный (разбираешься в вейпах).
-                Если просят код или личные данные - вежливо отказывай.
-            `;
+            const basePrompt = aiConfig.systemPrompt || 'Ты — дружелюбный помощник владельца вейп-шопа. Отвечай коротко и по делу.';
+            const dynamicContext = `\nДанные магазина сейчас: Выручка ${revenue}, Прибыль ${profit}, Товаров ${products}.`;
+            const contextSystem = basePrompt + dynamicContext;
 
             try {
                 let success = false;
@@ -5033,6 +5039,19 @@
 
         // Start
         setTimeout(initAI, 1000); // Wait for DOM
+
+        // КЛИК ВНЕ ЧАТА ДЛЯ ЗАКРЫТИЯ
+        window.addEventListener('mousedown', (e) => {
+            const modal = document.getElementById('chatModal');
+            const aiBtn = document.querySelector('.ai-btn') || document.querySelector('.btn-float[onclick*="openChatModal"]');
+
+            // Если чат открыт и клик не по нему и не по кнопке открытия
+            if (modal && modal.style.display === 'flex') {
+                if (!modal.contains(e.target) && (!aiBtn || !aiBtn.contains(e.target))) {
+                    closeChatModal();
+                }
+            }
+        });
 
     </script>
     </div> <!-- CONTAINER ENDS HERE -->
