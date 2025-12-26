@@ -2390,12 +2390,10 @@
                 sales = data.sales || [];
                 inventory = data.inventory || [];
                 losses = data.losses || [];
-                const cloudNotes = data.notes || [];
 
                 localStorage.setItem('vapeSales', JSON.stringify(sales));
                 localStorage.setItem('vapeInventory', JSON.stringify(inventory));
                 localStorage.setItem('vapeLosses', JSON.stringify(losses));
-                localStorage.setItem('vapeNotes', JSON.stringify(cloudNotes));
                 localStorage.setItem('vapeLastUpdate', cloudTime);
 
                 // Refresh UI
@@ -2403,13 +2401,7 @@
                 if (activeTab === 'sales') renderSales();
                 else if (activeTab === 'inventory') renderInventory();
                 else if (activeTab === 'losses') renderLosses();
-                if (activeTab === 'sales') renderSales();
-                else if (activeTab === 'inventory') renderInventory();
-                else if (activeTab === 'losses') renderLosses();
                 else if (activeTab === 'stats') renderStats();
-
-                // Always render notes just in case
-                renderNotes();
 
                 updateDatalist();
                 showToast("Данные обновлены 🔄");
