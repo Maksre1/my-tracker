@@ -325,6 +325,26 @@
             transform: scale(0.95);
         }
 
+        /* Range Input Styling */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+            margin-top: -6px;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
         .tab.active {
             background: var(--tab-active-bg);
             color: var(--tab-active-text);
@@ -1851,6 +1871,28 @@
                         <span class="slider"></span>
                     </label>
                 </div>
+
+                <div class="settings-row">
+                    <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                        <span>📳 Вибрация (Haptic)</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="hapticSwitch" onchange="toggleHapticSetting()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div id="hapticIntensityRow" class="settings-row"
+                    style="display: none; flex-direction: column; align-items: flex-start; gap: 10px; border-bottom: none;">
+                    <div
+                        style="font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between; width: 100%;">
+                        <span>Сила отдачи</span>
+                        <span id="hapticIntensityValue">Средняя</span>
+                    </div>
+                    <input type="range" id="hapticIntensity" min="1" max="3" step="1" value="2"
+                        oninput="updateHapticIntensity()"
+                        style="width: 100%; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.1); outline: none; -webkit-appearance: none; appearance: none; margin: 10px 0;">
+                </div>
             </div>
 
             <!-- Goal Card -->
@@ -2243,6 +2285,7 @@
 
         function switchTab(tabName) {
             if (isSwitching) return;
+            triggerHaptic('light');
 
             const tabs = document.querySelectorAll('.tab');
             let targetTab = null;
@@ -2464,6 +2507,7 @@
         }
 
         function closeModal() {
+            triggerHaptic('light');
             document.getElementById('editModal').style.display = 'none';
         }
 
@@ -3141,6 +3185,8 @@
         }
 
         function showToast(message, type = 'success') {
+            if (type === 'error') triggerHaptic('error');
+            else triggerHaptic('success');
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
@@ -4050,11 +4096,13 @@
 
         // Notes Functions
         function openNotesModal() {
+            triggerHaptic('light');
             document.getElementById('notesModal').style.display = 'flex';
             renderNotes();
         }
 
         function closeNotesModal() {
+            triggerHaptic('light');
             document.getElementById('notesModal').style.display = 'none';
         }
 
@@ -4267,9 +4315,77 @@
             if (themeSwitch) themeSwitch.checked = isLight;
 
             // Notes
-            const notesEnabled = localStorage.getItem('vapeNotesEnabled') !== 'false'; // Default to true
+            const notesEnabled = localStorage.getItem('vapeNotesEnabled') !== 'false';
             if (notesSwitch) notesSwitch.checked = notesEnabled;
             if (notesBtn) notesBtn.style.display = notesEnabled ? 'flex' : 'none';
+
+            // Haptic
+            const hapticEnabled = localStorage.getItem('vapeHapticEnabled') === 'true';
+            const hapticIntensity = localStorage.getItem('vapeHapticIntensity') || '2';
+            const hapticSwitch = document.getElementById('hapticSwitch');
+            const hapticIntensityRow = document.getElementById('hapticIntensityRow');
+            const hapticIntensityInput = document.getElementById('hapticIntensity');
+
+            if (hapticSwitch) hapticSwitch.checked = hapticEnabled;
+            if (hapticIntensityRow) hapticIntensityRow.style.display = hapticEnabled ? 'flex' : 'none';
+            if (hapticIntensityInput) hapticIntensityInput.value = hapticIntensity;
+            updateHapticIntensityText(hapticIntensity);
+        }
+
+        function triggerHaptic(type = 'medium') {
+            const enabled = localStorage.getItem('vapeHapticEnabled') === 'true';
+            if (!enabled || !navigator.vibrate) return;
+
+            const intensity = localStorage.getItem('vapeHapticIntensity') || '2';
+
+            // Map intensity settings to millisecond patterns
+            const patterns = {
+                '1': [10],      // Light
+                '2': [20],      // Medium
+                '3': [40]       // Heavy (was 50, refined to 40 for more 'clicky' feel)
+            };
+
+            // If a specific type is requested (like 'success' or 'error'), we can override
+            if (type === 'success') navigator.vibrate([10, 30, 10]);
+            else if (type === 'error') navigator.vibrate([50, 50, 50]);
+            else if (type === 'light') navigator.vibrate([10]);
+            else navigator.vibrate(patterns[intensity] || [20]);
+        }
+
+        function toggleHapticSetting() {
+            const hapticSwitch = document.getElementById('hapticSwitch');
+            const hapticIntensityRow = document.getElementById('hapticIntensityRow');
+            const enabled = hapticSwitch.checked;
+
+            localStorage.setItem('vapeHapticEnabled', enabled);
+            if (hapticIntensityRow) hapticIntensityRow.style.display = enabled ? 'flex' : 'none';
+
+            if (enabled) {
+                triggerHaptic();
+                showToast("Вибрация включена");
+            } else {
+                showToast("Вибрация выключена");
+            }
+        }
+
+        function updateHapticIntensity() {
+            const input = document.getElementById('hapticIntensity');
+            const val = input.value;
+            localStorage.setItem('vapeHapticIntensity', val);
+            updateHapticIntensityText(val);
+            triggerHaptic();
+        }
+
+        function updateHapticIntensityText(val) {
+            const textEl = document.getElementById('hapticIntensityValue');
+            if (!textEl) return;
+
+            const labels = {
+                '1': 'Легкая',
+                '2': 'Средняя',
+                '3': 'Сильная'
+            };
+            textEl.innerText = labels[val] || 'Средняя';
         }
 
         function toggleTheme() {
