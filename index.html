@@ -133,8 +133,14 @@
             margin: 0;
             padding: calc(45px + var(--safe-area-top)) 0 calc(110px + var(--safe-area-bottom));
             min-height: 100vh;
+            min-height: 100dvh;
+            /* Use dynamic viewport height if supported */
             overflow-x: hidden;
             position: relative;
+            -webkit-tap-highlight-color: transparent;
+            /* Remove blue highlight on tap */
+            overscroll-behavior-y: none;
+            /* Prevent page bounce */
         }
 
         .container {
@@ -287,8 +293,9 @@
             border: 1px solid var(--glass-border);
             width: 95%;
             max-width: 450px;
-            transition: transform 0.3s ease;
-            /* Ensure only transform animates if forced */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .tab {
@@ -1783,169 +1790,179 @@
 
     <!-- Data & Settings Page -->
     <div id="dataPage" class="page">
-        <!-- Statistics Cards -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-            <div
-                style="background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center;">
-                <div style="font-size: 24px; margin-bottom: 5px;">📊</div>
+        <div style="max-width: 600px; margin: 0 auto;">
+            <!-- Statistics Cards -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                 <div
-                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">
-                    Продаж</div>
-                <div id="infoSalesCount" style="font-size: 20px; font-weight: 700; color: var(--accent-color);">0</div>
-            </div>
-            <div
-                style="background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center;">
-                <div style="font-size: 24px; margin-bottom: 5px;">📦</div>
+                    style="background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">📊</div>
+                    <div
+                        style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">
+                        Продаж</div>
+                    <div id="infoSalesCount" style="font-size: 20px; font-weight: 700; color: var(--accent-color);">0
+                    </div>
+                </div>
                 <div
-                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">
-                    На складе</div>
-                <div id="infoInventoryCount" style="font-size: 20px; font-weight: 700; color: var(--accent-color);">0
+                    style="background: var(--card-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center;">
+                    <div style="font-size: 24px; margin-bottom: 5px;">📦</div>
+                    <div
+                        style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px;">
+                        На складе</div>
+                    <div id="infoInventoryCount" style="font-size: 20px; font-weight: 700; color: var(--accent-color);">
+                        0
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div
-            style="background: linear-gradient(135deg, rgba(112, 0, 255, 0.1), rgba(0, 242, 255, 0.1)); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center; margin-bottom: 20px;">
             <div
-                style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
-                Общая стоимость склада</div>
-            <div id="infoInventoryValue" style="font-size: 24px; font-weight: 700; color: #ffffff;">0 <span
-                    style="font-size: 16px; font-weight: normal; opacity: 0.6;">₽</span></div>
-        </div>
-
-        <!-- Settings Card -->
-        <div class="input-card">
-            <h3 style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
-                НАСТРОЙКИ</h3>
-
-            <div class="settings-row">
-                <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
-                    <span>☀️ Светлая тема</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="settings-row">
-                <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
-                    <span>📝 Заметки</span>
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="notesSwitch" onchange="toggleNotesSetting()">
-                    <span class="slider"></span>
-                </label>
-            </div>
-        </div>
-
-        <!-- Goal Card -->
-        <div class="input-card">
-            <h3 style="margin-top: 0; margin-bottom: 15px; text-align: center; letter-spacing: 2px; font-size: 14px;">🎯
-                МОЯ ЦЕЛЬ</h3>
-            <div class="input-group">
-                <input type="number" id="goalInput" placeholder="Установить сумму (₽)" oninput="updateGoal()"
-                    inputmode="numeric"
-                    style="text-align: center; font-size: 18px; font-weight: bold; color: var(--accent-color);">
-            </div>
-            <div style="font-size: 10px; opacity: 0.5; text-align: center; line-height: 1.4;">
-                Цель привязывается к выручке текущего фильтра (день, месяц и т.д.)
-            </div>
-        </div>
-
-        <!-- Data Management Card -->
-        <div class="input-card">
-            <h3 style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
-                ДАННЫЕ</h3>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-                <button class="main-btn" onclick="exportData()"
-                    style="padding: 14px 10px; font-size: 11px; background: rgba(0,0,0,0.05); color: var(--text-color); border: 1px solid var(--glass-border);">
-                    ⬇️ БЭКАП
-                </button>
-                <button class="main-btn" onclick="document.getElementById('importFile').click()"
-                    style="padding: 14px 10px; font-size: 11px; background: rgba(0,0,0,0.05); color: var(--text-color); border: 1px solid var(--glass-border);">
-                    ⬆️ ЗАГРУЗИТЬ
-                </button>
-            </div>
-            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
-
-            <button class="main-btn" onclick="shareData()" style="margin-bottom: 15px;">
-                📤 ПОДЕЛИТЬСЯ ДАННЫМИ
-            </button>
-
-            <button class="main-btn" onclick="openHelpPage()"
-                style="background: rgba(0,242,255,0.15); color: var(--accent-color); border: 1.5px solid rgba(0,242,255,0.3);">
-                ❓ КАК ПОЛЬЗОВАТЬСЯ?
-            </button>
-
-            <button class="main-btn" onclick="openChangePasswordModal()"
-                style="margin-top: 15px; background: rgba(0, 242, 255, 0.15); color: var(--accent-color); border: 1.5px solid rgba(0, 242, 255, 0.3);">
-                🔑 СМЕНИТЬ ПАРОЛЬ
-            </button>
-
-            <button class="main-btn" onclick="logout()"
-                style="margin-top: 15px; background: rgba(255, 61, 113, 0.15); color: #ff3b30; border: 1.5px solid rgba(255, 61, 113, 0.3);">
-                🚪 ВЫЙТИ
-            </button>
-
-            <!-- Admin Panel (Hidden by default) -->
-            <div id="adminPanel"
-                style="display: none; margin-top: 20px; background: rgba(255, 61, 113, 0.1); padding: 18px; border-radius: 18px; border: 1px solid var(--danger-color);">
-                <h4
-                    style="margin-top: 0; margin-bottom: 12px; color: var(--danger-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
-                    🛡️ Админ Панель
-                </h4>
-
+                style="background: linear-gradient(135deg, rgba(112, 0, 255, 0.1), rgba(0, 242, 255, 0.1)); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); text-align: center; margin-bottom: 20px;">
                 <div
-                    style="font-size: 13px; color: var(--text-color); margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px;">
-                    <div><b>Последний вход:</b> <span id="adminLastSeen"
-                            style="color: var(--accent-color)">Загрузка...</span></div>
-                    <div><b>Устройство:</b> <span id="adminLastDevice" style="opacity: 0.7;">-</span></div>
+                    style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+                    Общая стоимость склада</div>
+                <div id="infoInventoryValue" style="font-size: 24px; font-weight: 700; color: #ffffff;">0 <span
+                        style="font-size: 16px; font-weight: normal; opacity: 0.6;">₽</span></div>
+            </div>
+
+            <!-- Settings Card -->
+            <div class="input-card">
+                <h3
+                    style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
+                    НАСТРОЙКИ</h3>
+
+                <div class="settings-row">
+                    <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                        <span>☀️ Светлая тема</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="themeSwitch" onchange="toggleTheme()">
+                        <span class="slider"></span>
+                    </label>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <button class="main-btn" onclick="adminResetPassword()"
-                        style="background: var(--danger-color); font-size: 12px; padding: 10px;">
-                        ♻️ СБРОСИТЬ ПАРОЛЬ ПОЛЬЗОВАТЕЛЯ
+                <div class="settings-row">
+                    <div style="font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                        <span>📝 Заметки</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="notesSwitch" onchange="toggleNotesSetting()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Goal Card -->
+            <div class="input-card">
+                <h3
+                    style="margin-top: 0; margin-bottom: 15px; text-align: center; letter-spacing: 2px; font-size: 14px;">
+                    🎯
+                    МОЯ ЦЕЛЬ</h3>
+                <div class="input-group">
+                    <input type="number" id="goalInput" placeholder="Установить сумму (₽)" oninput="updateGoal()"
+                        inputmode="numeric"
+                        style="text-align: center; font-size: 18px; font-weight: bold; color: var(--accent-color);">
+                </div>
+                <div style="font-size: 10px; opacity: 0.5; text-align: center; line-height: 1.4;">
+                    Цель привязывается к выручке текущего фильтра (день, месяц и т.д.)
+                </div>
+            </div>
+
+            <!-- Data Management Card -->
+            <div class="input-card">
+                <h3
+                    style="margin-top: 0; margin-bottom: 20px; text-align: center; letter-spacing: 2px; font-size: 14px;">
+                    ДАННЫЕ</h3>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <button class="main-btn" onclick="exportData()"
+                        style="padding: 14px 10px; font-size: 11px; background: rgba(0,0,0,0.05); color: var(--text-color); border: 1px solid var(--glass-border);">
+                        ⬇️ БЭКАП
                     </button>
-                    <small style="display: block; margin-top: 5px; opacity: 0.6; font-size: 10px;">Пользователь сможет
-                        войти без пароля, но будет обязан создать новый.</small>
+                    <button class="main-btn" onclick="document.getElementById('importFile').click()"
+                        style="padding: 14px 10px; font-size: 11px; background: rgba(0,0,0,0.05); color: var(--text-color); border: 1px solid var(--glass-border);">
+                        ⬆️ ЗАГРУЗИТЬ
+                    </button>
                 </div>
+                <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
 
-                <div style="margin-top: 15px;">
-                    <h5
-                        style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
-                        <span>📜 Лента действий:</span>
-                        <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
-                            onclick="clearAuditLog()">очистить</span>
-                    </h5>
-                    <div id="adminActivityLog"
-                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                        <!-- Activity log items -->
-                        <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                <button class="main-btn" onclick="shareData()" style="margin-bottom: 15px;">
+                    📤 ПОДЕЛИТЬСЯ ДАННЫМИ
+                </button>
+
+                <button class="main-btn" onclick="openHelpPage()"
+                    style="background: rgba(0,242,255,0.15); color: var(--accent-color); border: 1.5px solid rgba(0,242,255,0.3);">
+                    ❓ КАК ПОЛЬЗОВАТЬСЯ?
+                </button>
+
+                <button class="main-btn" onclick="openChangePasswordModal()"
+                    style="margin-top: 15px; background: rgba(0, 242, 255, 0.15); color: var(--accent-color); border: 1.5px solid rgba(0, 242, 255, 0.3);">
+                    🔑 СМЕНИТЬ ПАРОЛЬ
+                </button>
+
+                <button class="main-btn" onclick="logout()"
+                    style="margin-top: 15px; background: rgba(255, 61, 113, 0.15); color: #ff3b30; border: 1.5px solid rgba(255, 61, 113, 0.3);">
+                    🚪 ВЫЙТИ
+                </button>
+
+                <!-- Admin Panel (Hidden by default) -->
+                <div id="adminPanel"
+                    style="display: none; margin-top: 20px; background: rgba(255, 61, 113, 0.1); padding: 18px; border-radius: 18px; border: 1px solid var(--danger-color);">
+                    <h4
+                        style="margin-top: 0; margin-bottom: 12px; color: var(--danger-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+                        🛡️ Админ Панель
+                    </h4>
+
+                    <div
+                        style="font-size: 13px; color: var(--text-color); margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 12px;">
+                        <div><b>Последний вход:</b> <span id="adminLastSeen"
+                                style="color: var(--accent-color)">Загрузка...</span></div>
+                        <div><b>Устройство:</b> <span id="adminLastDevice" style="opacity: 0.7;">-</span></div>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <button class="main-btn" onclick="adminResetPassword()"
+                            style="background: var(--danger-color); font-size: 12px; padding: 10px;">
+                            ♻️ СБРОСИТЬ ПАРОЛЬ ПОЛЬЗОВАТЕЛЯ
+                        </button>
+                        <small style="display: block; margin-top: 5px; opacity: 0.6; font-size: 10px;">Пользователь
+                            сможет
+                            войти без пароля, но будет обязан создать новый.</small>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <h5
+                            style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8; display: flex; justify-content: space-between;">
+                            <span>📜 Лента действий:</span>
+                            <span style="font-size: 10px; color: var(--accent-color); cursor: pointer;"
+                                onclick="clearAuditLog()">очистить</span>
+                        </h5>
+                        <div id="adminActivityLog"
+                            style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; font-size: 11px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <!-- Activity log items -->
+                            <div style="opacity: 0.5; text-align: center; padding: 10px;">Загрузка логов...</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
+                        <div id="adminPassHistory"
+                            style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
+                            <!-- History items -->
+                        </div>
                     </div>
                 </div>
 
-                <div style="margin-top: 15px;">
-                    <h5 style="margin: 0 0 10px 0; font-size: 12px; opacity: 0.8;">История паролей (Облако):</h5>
-                    <div id="adminPassHistory"
-                        style="max-height: 100px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 5px; border-radius: 8px; font-size: 11px; margin-bottom: 10px; font-family: monospace;">
-                        <!-- History items -->
+                <div
+                    style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
+                    <h4
+                        style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
+                        Безопасность данных:</h4>
+                    <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
+                        <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
+                            потерять данные.</p>
+                        <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и
+                            выберите
+                            файл бэкапа. Все настройки и история мгновенно вернутся.</p>
                     </div>
-                </div>
-            </div>
-
-            <div
-                style="margin-top: 20px; background: rgba(255,255,255,0.05); padding: 18px; border-radius: 18px; border: 1px solid var(--glass-border);">
-                <h4
-                    style="margin-top: 0; margin-bottom: 12px; color: var(--accent-color); font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px;">
-                    Безопасность данных:</h4>
-                <div style="font-size: 13px; line-height: 1.6; color: var(--text-color); opacity: 0.9;">
-                    <p style="margin-bottom: 10px;">💾 <b>Сохраняйте копию:</b> Рекомендуется делать бэкап, чтобы не
-                        потерять данные.</p>
-                    <p style="margin: 0;">🔄 <b>Восстановление:</b> Если данные пропали — нажмите «Загрузить» и выберите
-                        файл бэкапа. Все настройки и история мгновенно вернутся.</p>
                 </div>
             </div>
         </div>
@@ -2037,7 +2054,8 @@
                         <li><b>Убытки</b> — общая сумма списанных товаров</li>
                         <li><b>Топ товаров</b> — самые популярные позиции</li>
                     </ul>
-                    <p style="margin: 10px 0 0 0;">Можно фильтровать по датам для анализа за день, неделю или месяц.</p>
+                    <p style="margin: 10px 0 0 0;">Можно фильтровать по датам для анализа за день, неделю или месяц.
+                    </p>
                 </div>
             </div>
 
