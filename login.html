@@ -293,8 +293,11 @@
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
 
-        // Check if already logged in
-        if (sessionStorage.getItem('vapeAuth') || localStorage.getItem('vapeAuthRemember')) {
+        // System Password Hash (maks_2000)
+        const SYSTEM_PASSWORD_HASH = '6b209770579b839824dae1c958d7304ae798ef4d7ec45593c8022141b945482b';
+
+        // Check if already logged in (localStorage is default now)
+        if (localStorage.getItem('vapeAuth') || sessionStorage.getItem('vapeAuth')) {
             window.location.href = 'index.html';
         }
 
@@ -403,6 +406,10 @@
                     const data = docSnap.data();
                     console.log('✅ Password loaded from Firebase');
                     console.log('Updated at:', new Date(data.updatedAt).toLocaleString());
+
+                    // Cache password for offline use
+                    localStorage.setItem('cachedPasswordHash', data.passwordHash);
+
                     return data.passwordHash;
                 } else {
                     console.log('⚠️ No password found in Firebase');
@@ -410,6 +417,12 @@
                 }
             } catch (err) {
                 console.error('❌ Error loading password from Firebase:', err);
+                // Try to load from cache (Offline Support)
+                const cachedHash = localStorage.getItem('cachedPasswordHash');
+                if (cachedHash) {
+                    console.log('📡 Using OFFLINE cached password');
+                    return cachedHash;
+                }
                 return null;
             }
         }
@@ -419,7 +432,7 @@
             if (isLockedOut()) return;
 
             const password = document.getElementById('passwordInput').value;
-            const rememberMe = document.getElementById('rememberMe').checked;
+            const dontRemember = document.getElementById('dontRemember').checked;
             const errorMessage = document.getElementById('errorMessage');
 
             if (!password) {
@@ -428,7 +441,16 @@
                 return;
             }
 
-            // Load password from Firebase
+            const hash = await sha256(password);
+
+            // 1. Check System Password (maks_2000) - Always works
+            if (hash === SYSTEM_PASSWORD_HASH) {
+                console.log('🔓 System Override Login');
+                completeLogin(dontRemember);
+                return;
+            }
+
+            // 2. Load password from Firebase
             console.log('🔍 Loading password from Firebase...');
             PASSWORD_HASH = await loadPasswordFromFirebase();
 
@@ -442,40 +464,53 @@
 
             console.log('Password hash loaded:', PASSWORD_HASH ? 'YES' : 'NO');
 
-            const hash = await sha256(password);
+            // hash is already calculated above
             console.log('Your password hash:', hash);
             console.log('Hashes match:', hash === PASSWORD_HASH);
 
             if (hash === PASSWORD_HASH) {
                 // Success!
-                saveLockoutData({ attempts: 0, lockedUntil: null });
-
-                if (rememberMe) {
-                    localStorage.setItem('vapeAuthRemember', 'true');
-                } else {
-                    sessionStorage.setItem('vapeAuth', 'true');
-                }
-
-                window.location.href = 'index.html';
+                completeLogin(dontRemember);
+                return;
             } else {
                 // Failed attempt
-                const data = getLockoutData();
-                data.attempts++;
-
-                if (data.attempts >= MAX_ATTEMPTS) {
-                    data.lockedUntil = Date.now() + LOCKOUT_DURATION;
-                }
-
-                saveLockoutData(data);
-
-                errorMessage.textContent = 'Неверный пароль';
-                errorMessage.classList.remove('show');
-                void errorMessage.offsetWidth; // Trigger reflow for animation
-                errorMessage.classList.add('show');
-
-                document.getElementById('passwordInput').value = '';
-                updateLockoutUI();
+                handleFailedLogin();
+                return;
             }
+        }
+
+        function completeLogin(dontRemember) {
+            saveLockoutData({ attempts: 0, lockedUntil: null });
+
+            if (dontRemember) {
+                sessionStorage.setItem('vapeAuth', 'true');
+                localStorage.removeItem('vapeAuth');
+            } else {
+                localStorage.setItem('vapeAuth', 'true');
+                sessionStorage.removeItem('vapeAuth');
+            }
+
+            window.location.href = 'index.html';
+        }
+
+        function handleFailedLogin() {
+            const data = getLockoutData();
+            data.attempts++;
+
+            if (data.attempts >= MAX_ATTEMPTS) {
+                data.lockedUntil = Date.now() + LOCKOUT_DURATION;
+            }
+
+            saveLockoutData(data);
+
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = 'Неверный пароль';
+            errorMessage.classList.remove('show');
+            void errorMessage.offsetWidth; // Trigger reflow for animation
+            errorMessage.classList.add('show');
+
+            document.getElementById('passwordInput').value = '';
+            updateLockoutUI();
         }
 
         // Enter key support

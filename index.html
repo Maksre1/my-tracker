@@ -1655,7 +1655,7 @@
 
     <script>
         // Auth Check - redirect to login if not authenticated
-        if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuthRemember')) {
+        if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuth')) {
             window.location.href = 'login.html';
         }
 
@@ -2343,7 +2343,8 @@
         function logout() {
             if (confirm("Вы уверены, что хотите выйти?")) {
                 sessionStorage.removeItem('vapeAuth');
-                localStorage.removeItem('vapeAuthRemember');
+                localStorage.removeItem('vapeAuth');
+                // Don't remove cachedPasswordHash so offline login still works later if needed
 
                 // Sign out from Firebase if available
                 if (window.firebaseAuth) {
