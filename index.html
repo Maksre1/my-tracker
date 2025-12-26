@@ -26,21 +26,97 @@
 
     <style>
         :root {
+            /* Existing Vars ... */
             --bg-color: #050505;
-            --bg-image: url('vape_bg_new.png');
-            --bg-overlay: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6));
-            --card-bg: rgba(20, 20, 35, 0.6);
-            --accent-color: #ffffff;
-            --secondary-accent: #e0e0e0;
-            --text-color: #ffffff;
-            --text-secondary: rgba(255, 255, 255, 0.6);
-            --success-color: #00ff9d;
-            --danger-color: #ff3d71;
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --shadow-color: rgba(0, 0, 0, 0.4);
-            --safe-area-top: env(safe-area-inset-top, 0px);
-            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            /* ... */
         }
+
+        /* NEW STYLES FOR NOTES AND LOGOUT */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .logout-icon {
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-color);
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .logout-icon:hover {
+            opacity: 1;
+        }
+
+        /* Floating Notes Button */
+        .notes-fab {
+            position: fixed;
+            bottom: 100px;
+            /* Above bottom nav */
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: var(--text-color);
+            box-shadow: 0 4px 15px var(--shadow-color);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s, background 0.3s;
+        }
+
+        .notes-fab:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* Notes Modal Styles */
+        .note-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border: 1px solid var(--glass-border);
+        }
+
+        .note-text {
+            flex-grow: 1;
+            white-space: pre-wrap;
+            margin-right: 10px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .delete-note-btn {
+            background: none;
+            border: none;
+            color: var(--danger-color);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 5px;
+            opacity: 0.7;
+        }
+
+        /* END NEW STYLES */
 
         body.light-theme {
             --bg-color: #f2f2f7;
@@ -1016,7 +1092,11 @@
             <button id="themeToggle" class="theme-toggle" style="position: static; margin-bottom: 0;">☀️</button>
         </div>
 
-        <h1>VAPE TRACKER</h1>
+        <div class="header">
+            <div style="width: 24px;"></div>
+            <h1>VAPE TRACKER</h1>
+            <div class="logout-icon" onclick="logout()" title="Выйти">🚪</div>
+        </div>
 
         <div class="stats-grid">
             <div class="total-box">
@@ -1548,6 +1628,56 @@
                     <p style="margin: 10px 0 0 0;">⚠️ Делайте бэкап регулярно! Данные хранятся на устройстве и могут
                         пропасть при очистке браузера.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Logic -->
+    <div class="notes-fab" onclick="openNotesModal()">✏️</div>
+
+    <!-- Notes Modal -->
+    <div id="notesModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="letter-spacing: 2px;">📝 ЗАМЕТКИ</h3>
+
+            <div class="input-group">
+                <textarea id="newNoteInput" placeholder="Новая заметка..."
+                    style="width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-color); padding: 10px; resize: none; font-size: 16px; font-family: inherit;"></textarea>
+            </div>
+
+            <button class="main-btn" onclick="addNote()" style="margin-bottom: 20px;">ДОБАВИТЬ</button>
+
+            <div id="notesList" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                <!-- Notes will be rendered here -->
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="clear-btn" style="width: 100%;" onclick="closeNotesModal()">ЗАКРЫТЬ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Logic -->
+    <div class="notes-fab" onclick="openNotesModal()">✏️</div>
+
+    <!-- Notes Modal -->
+    <div id="notesModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="letter-spacing: 2px;">📝 ЗАМЕТКИ</h3>
+
+            <div class="input-group">
+                <textarea id="newNoteInput" placeholder="Новая заметка..."
+                    style="width: 100%; height: 80px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 12px; color: var(--text-color); padding: 10px; resize: none; font-size: 16px; font-family: inherit;"></textarea>
+            </div>
+
+            <button class="main-btn" onclick="addNote()" style="margin-bottom: 20px;">ДОБАВИТЬ</button>
+
+            <div id="notesList" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                <!-- Notes will be rendered here -->
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button class="clear-btn" style="width: 100%;" onclick="closeNotesModal()">ЗАКРЫТЬ</button>
             </div>
         </div>
     </div>
@@ -2338,6 +2468,81 @@
                 toast.style.transform = 'translateY(-20px)';
                 setTimeout(() => toast.remove(), 400);
             }, 3000);
+        }
+
+        /* Notes Functionality */
+        function openNotesModal() {
+            document.getElementById('notesModal').style.display = 'flex';
+            document.getElementById('newNoteInput').focus();
+            renderNotes();
+        }
+
+        function closeNotesModal() {
+            document.getElementById('notesModal').style.display = 'none';
+        }
+
+        function getNotes() {
+            const notes = localStorage.getItem('vapeNotes');
+            return notes ? JSON.parse(notes) : [];
+        }
+
+        function saveNotes(notes) {
+            localStorage.setItem('vapeNotes', JSON.stringify(notes));
+        }
+
+        function addNote() {
+            const input = document.getElementById('newNoteInput');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            const notes = getNotes();
+            notes.unshift({
+                id: Date.now(),
+                text: text,
+                date: new Date().toLocaleDateString()
+            });
+
+            saveNotes(notes);
+            input.value = '';
+            renderNotes();
+        }
+
+        function deleteNote(id) {
+            if (!confirm('Удалить заметку?')) return;
+
+            let notes = getNotes();
+            notes = notes.filter(n => n.id !== id);
+            saveNotes(notes);
+            renderNotes();
+        }
+
+        function renderNotes() {
+            const list = document.getElementById('notesList');
+            const notes = getNotes();
+
+            if (notes.length === 0) {
+                list.innerHTML = '<div class="empty-notes">Нет заметок</div>';
+                return;
+            }
+
+            list.innerHTML = notes.map(note => `
+                <div class="note-item">
+                    <div class="note-text">${note.text}</div>
+                    <button class="delete-note-btn" onclick="deleteNote(${note.id})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Window click handler for modals
+        window.onclick = function (event) {
+            const modals = ['editLossModal', 'duplicateConflictModal', 'changePasswordModal', 'helpPageModal', 'notesModal'];
+            modals.forEach(id => {
+                const modal = document.getElementById(id);
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            });
         }
 
         function logout() {
