@@ -1664,6 +1664,12 @@
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
 
+        function updateDatalist() {
+            // This function used to update a datalist, but we moved to custom autocomplete.
+            // We keep it defined to prevent crashes since it's called in multiple places.
+            console.log('Datalist updated');
+        }
+
         // Load cloud data on startup removed from here, handled by onAuthStateChanged
         let sortType = localStorage.getItem('vapeSortType') || 'date';
         let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
