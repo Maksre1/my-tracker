@@ -984,32 +984,26 @@
         /* Sync Badge */
         .sync-badge {
             position: fixed;
-            top: calc(10px + var(--safe-area-top));
-            right: 20px;
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            z-index: 100;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            opacity: 0.8;
+            top: calc(15px + var(--safe-area-top));
+            right: 15px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #666;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             pointer-events: none;
         }
 
         .sync-badge.online {
-            color: var(--success-color);
-            border-color: rgba(0, 255, 157, 0.2);
+            background: #00ff9d;
+            box-shadow: 0 0 12px rgba(0, 255, 157, 0.4);
         }
 
         .sync-badge.offline {
-            color: var(--danger-color);
-            border-color: rgba(255, 61, 113, 0.2);
+            background: #ff3d71;
+            box-shadow: 0 0 12px rgba(255, 61, 113, 0.4);
         }
     </style>
 </head>
@@ -1354,9 +1348,7 @@
     </div>
 
     <div id="toast-container"></div>
-    <div class="sync-badge online" id="syncStatus">
-        <span id="syncIcon">☁️</span> <span id="syncText">СЕТЬ: OK</span>
-    </div>
+    <div class="sync-badge online" id="syncStatus"></div>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay">
@@ -1568,7 +1560,7 @@
                 signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape")
                     .catch(err => {
                         console.error("Firebase Auth Error:", err);
-                        updateSyncUI(false, "ОШИБКА КЛЮЧА 🔑");
+                        updateSyncUI(false);
                     });
             }
         });
@@ -1581,17 +1573,10 @@
         });
         window.addEventListener('offline', () => updateSyncUI(false));
 
-        function updateSyncUI(online, customText) {
+        function updateSyncUI(online) {
             const badge = document.getElementById('syncStatus');
-            const text = document.getElementById('syncText');
-            if (badge && text) {
-                if (online) {
-                    badge.className = 'sync-badge online';
-                    text.textContent = customText || 'СЕТЬ: OK';
-                } else {
-                    badge.className = 'sync-badge offline';
-                    text.textContent = customText || 'ОФФЛАЙН';
-                }
+            if (badge) {
+                badge.className = online ? 'sync-badge online' : 'sync-badge offline';
             }
         }
     </script>
