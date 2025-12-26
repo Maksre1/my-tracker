@@ -4852,12 +4852,15 @@
 
             // ИНСТРУКЦИИ ПО УПРАВЛЕНИЮ (ДЛЯ AI)
             const toolInstructions = `
-            ТЫ МОЖЕШЬ ВЫПОЛНЯТЬ ДЕЙСТВИЯ. Если юзер просит что-то сделать, добавь в КОНЕЦ сообщения JSON-блок (в одну строку):
-            - Добавить товар: {"action":"add_inventory","name":"Название","qty":10,"price":500}
-            - Удалить ВСЕХ должников: {"action":"clear_debts"}
-            - Добавить заметку: {"action":"add_note","text":"текст"}
-            - Записать продажу: {"action":"add_sale","name":"Товар","qty":1,"price":1000}
-            ПРИМЕР: "Ок, добавил 10 жиж Brusko на склад. {"action":"add_inventory","name":"Brusko","qty":10,"price":300}"
+            ТЫ — АДМИНИСТРАТОР МАГАЗИНА. Ты можешь управлять данными через JSON в конце сообщения:
+            - Склад: {"action":"add_inventory","name":"Название","qty":10,"price":500}
+            - Удаление со склада: {"action":"delete_inventory","name":"Название"}
+            - Продажи: {"action":"add_sale","name":"Товар","qty":1,"price":1000}
+            - Удалить продажу: {"action":"delete_sale","id":"last" или "all"}
+            - Убытки/Брак: {"action":"add_loss","name":"Название","qty":1,"cost":300,"reason":"defect"}
+            - Долги: {"action":"add_debt","name":"Имя","amount":1000} | {"action":"clear_debts"}
+            - Заметки: {"action":"add_note","text":"текст"} | {"action":"delete_note","id":"all"}
+            ПРИМЕР: "Записал брак. {"action":"add_loss","name":"Brusko","qty":1,"cost":350,"reason":"defect"}"
             `;
 
             const dynamicContext = `\nДанные магазина сейчас: Выручка ${revenue}, Прибыль ${profit}, Товаров ${products}.`;
@@ -4982,74 +4985,118 @@
             return data.candidates[0].content.parts[0].text;
         }
 
-        // Исполнитель действий AI
+        // Исполнитель действий AI (ПОЛНЫЙ КОНТРОЛЬ)
         function processAIAction(text) {
             try {
-                // Ищем JSON блок в тексте (формат {"action": ...})
                 const jsonMatch = text.match(/\{"action":.*\}/);
                 if (!jsonMatch) return;
 
                 const data = JSON.parse(jsonMatch[0]);
-                console.log("AI Action Triggered:", data);
+                console.log("AI Command:", data);
 
                 switch (data.action) {
                     case 'add_inventory':
                         if (!data.name) return;
-                        const newItem = {
-                            id: Date.now(),
-                            name: data.name,
-                            qty: parseInt(data.qty || 1),
-                            cost: parseFloat(data.price || 0),
-                            price: parseFloat(data.price || 0) * 1.5, // Наценка 50%
-                            date: new Date().toLocaleDateString('ru-RU')
-                        };
-                        inventory.unshift(newItem);
-                        saveData(`AI: Добавлено на склад ${data.name}`);
+                        const existing = inventory.find(i => i.name.toLowerCase() === data.name.toLowerCase());
+                        if (existing) {
+                            existing.qty += parseInt(data.qty || 1);
+                            saveData(`AI: Пополнение ${data.name}`);
+                        } else {
+                            inventory.unshift({
+                                id: Date.now(),
+                                name: data.name,
+                                qty: parseInt(data.qty || 1),
+                                cost: parseFloat(data.price || 0),
+                                price: parseFloat(data.price || 0) * 1.5,
+                                date: new Date().toLocaleDateString('ru-RU')
+                            });
+                            saveData(`AI: Новый товар ${data.name}`);
+                        }
                         renderInventory();
-                        showToast(`📦 Склад: +${data.name}`);
+                        showToast(`📦 Склад: ${data.name}`);
                         break;
 
-                    case 'clear_debts':
-                        const count = debts.length;
-                        debts = [];
-                        saveData(`AI: Список долгов полностью очищен`);
-                        renderDebts();
-                        showToast(`✅ Удалено должников: ${count}`);
-                        break;
-
-                    case 'add_note':
-                        if (!data.text) return;
-                        const newNote = {
-                            id: Date.now(),
-                            text: data.text,
-                            date: new Date().toISOString()
-                        };
-                        notes.unshift(newNote);
-                        saveData(`AI: Добавлена заметка`);
-                        renderNotes();
-                        showToast(`📝 Заметка добавлена`);
+                    case 'delete_inventory':
+                        if (!data.name) return;
+                        inventory = inventory.filter(i => i.name.toLowerCase() !== data.name.toLowerCase());
+                        saveData(`AI: Удаление товара`);
+                        renderInventory();
+                        showToast(`🗑️ Склад: удален ${data.name}`);
                         break;
 
                     case 'add_sale':
                         if (!data.name) return;
-                        const sale = {
+                        const invItem = inventory.find(i => i.name.toLowerCase() === data.name.toLowerCase());
+                        sales.unshift({
                             id: Date.now(),
                             name: data.name,
                             qty: parseInt(data.qty || 1),
                             price: parseFloat(data.price || 0),
-                            cost: 0,
+                            cost: invItem ? invItem.cost : 0,
                             date: new Date().toLocaleDateString('ru-RU'),
                             timestamp: Date.now()
-                        };
-                        sales.unshift(sale);
+                        });
+                        if (invItem) invItem.qty = Math.max(0, invItem.qty - (data.qty || 1));
                         saveData(`AI: Продажа ${data.name}`);
                         renderSales();
+                        renderInventory();
                         showToast(`💰 Продажа записана`);
+                        break;
+
+                    case 'add_loss':
+                        if (!data.name) return;
+                        losses.unshift({
+                            id: Date.now(),
+                            name: data.name,
+                            qty: parseInt(data.qty || 1),
+                            cost: parseFloat(data.cost || 0),
+                            reason: data.reason || 'other',
+                            date: new Date().toLocaleDateString('ru-RU'),
+                            timestamp: Date.now()
+                        });
+                        saveData(`AI: Брак/Убыток`);
+                        renderLosses();
+                        showToast(`📉 Убыток записан`);
+                        break;
+
+                    case 'add_debt':
+                        if (!data.name) return;
+                        debts.unshift({
+                            id: Date.now(),
+                            name: data.name,
+                            amount: parseFloat(data.amount || 0),
+                            date: new Date().toLocaleDateString('ru-RU')
+                        });
+                        saveData(`AI: Новый долг`);
+                        renderDebts();
+                        showToast(`🤝 Долг: ${data.name}`);
+                        break;
+
+                    case 'clear_debts':
+                        debts = [];
+                        saveData(`AI: Долги очищены`);
+                        renderDebts();
+                        showToast(`✅ Все долги списаны`);
+                        break;
+
+                    case 'add_note':
+                        if (!data.text) return;
+                        notes.unshift({ id: Date.now(), text: data.text, date: new Date().toISOString() });
+                        saveData(`AI: Заметка`);
+                        renderNotes();
+                        showToast(`📝 Заметка добавлена`);
+                        break;
+
+                    case 'delete_note':
+                        if (data.id === 'all') notes = [];
+                        saveData(`AI: Заметки удалены`);
+                        renderNotes();
+                        showToast(`🗑️ Заметки очищены`);
                         break;
                 }
                 triggerHaptic('success');
             } catch (e) {
-                console.error("AI Action Parsing Error:", e);
+                console.error("AI Action Error:", e);
             }
         }
 
