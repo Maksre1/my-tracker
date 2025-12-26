@@ -2440,6 +2440,14 @@
         window.doc = doc;
         window.auth = auth;
 
+        // Legacy compatibility
+        window.firebaseDB = db;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseOnSnapshot = onSnapshot;
+        window.firebaseAuth = auth;
+
 
         // Obfuscated credentials decoder
         const _0x4a2b = (s) => atob(s);
