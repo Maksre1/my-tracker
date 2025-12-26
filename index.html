@@ -2218,7 +2218,7 @@
                         updatedAt: now,
                         lastSyncBy: window.firebaseAuth.currentUser.email
                     });
-                    showToast("Синхронизировано ☁️");
+                    // showToast("Синхронизировано ☁️"); // Disabled by user request
                 } catch (e) {
                     console.error("Firebase Save Error:", e);
                     showToast("Ошибка облака ⚠️", "error");
