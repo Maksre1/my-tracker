@@ -1347,6 +1347,28 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="letter-spacing: 2px;">СМЕНИТЬ ПАРОЛЬ</h3>
+            <div class="input-group">
+                <input type="password" id="currentPassword" placeholder="Текущий пароль">
+            </div>
+            <div class="input-group">
+                <input type="password" id="newPassword" placeholder="Новый пароль">
+            </div>
+            <div class="input-group">
+                <input type="password" id="confirmPassword" placeholder="Подтвердите новый пароль">
+            </div>
+            <div id="passwordChangeError" style="color: #ff3b30; font-size: 13px; margin-bottom: 15px; display: none;">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="main-btn" style="flex: 2;" onclick="saveNewPassword()">СОХРАНИТЬ</button>
+                <button class="clear-btn" style="flex: 1;" onclick="closeChangePasswordModal()">ОТМЕНА</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container"></div>
     <div class="sync-badge" id="syncStatus"></div>
 
@@ -1415,6 +1437,11 @@
             <button class="main-btn" onclick="openHelpPage()"
                 style="background: rgba(0,242,255,0.15); color: var(--accent-color); border: 1.5px solid rgba(0,242,255,0.3);">
                 ❓ КАК ПОЛЬЗОВАТЬСЯ?
+            </button>
+
+            <button class="main-btn" onclick="openChangePasswordModal()"
+                style="margin-top: 15px; background: rgba(0, 242, 255, 0.15); color: var(--accent-color); border: 1.5px solid rgba(0, 242, 255, 0.3);">
+                🔑 СМЕНИТЬ ПАРОЛЬ
             </button>
 
             <button class="main-btn" onclick="logout()"
@@ -2323,6 +2350,94 @@
                 } else {
                     window.location.href = 'login.html';
                 }
+            }
+        }
+
+        // Password Change Functions
+        function openChangePasswordModal() {
+            document.getElementById('changePasswordModal').style.display = 'flex';
+            document.getElementById('currentPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('passwordChangeError').style.display = 'none';
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('changePasswordModal').style.display = 'none';
+        }
+
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function saveNewPassword() {
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorDiv = document.getElementById('passwordChangeError');
+
+            // Validation
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                errorDiv.textContent = 'Заполните все поля!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errorDiv.textContent = 'Новые пароли не совпадают!';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (newPassword.length < 3) {
+                errorDiv.textContent = 'Пароль слишком короткий (минимум 3 символа)';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                // Verify current password
+                const currentHash = await sha256(currentPassword);
+
+                // Load current password from Firebase
+                if (!window.firebaseDB) {
+                    errorDiv.textContent = 'Firebase не доступен. Попробуйте позже.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                const docSnap = await firebaseGetDoc(docRef);
+
+                let storedHash = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3'; // fallback
+                if (docSnap.exists()) {
+                    storedHash = docSnap.data().passwordHash;
+                }
+
+                if (currentHash !== storedHash) {
+                    errorDiv.textContent = 'Неверный текущий пароль!';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // Save new password
+                const newHash = await sha256(newPassword);
+                await firebaseSetDoc(docRef, {
+                    passwordHash: newHash,
+                    updatedAt: Date.now(),
+                    updatedBy: 'admin'
+                });
+
+                showToast('Пароль успешно изменен! 🔒');
+                closeChangePasswordModal();
+            } catch (err) {
+                console.error('Password change error:', err);
+                errorDiv.textContent = 'Ошибка при смене пароля. Попробуйте позже.';
+                errorDiv.style.display = 'block';
             }
         }
 

@@ -263,9 +263,33 @@
         </div>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPDXk_HldcpjSTWHfIq00pAm-U_0EuaQQ",
+            authDomain: "vape-price.firebaseapp.com",
+            projectId: "vape-price",
+            storageBucket: "vape-price.firebasestorage.app",
+            messagingSenderId: "251545583200",
+            appId: "1:251545583200:web:037acd5796580e28c6cd05",
+            measurementId: "G-03V6W6RVYL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.firebaseDB = db;
+        window.firebaseDoc = doc;
+        window.firebaseGetDoc = getDoc;
+        window.firebaseSetDoc = setDoc;
+    </script>
+
     <script>
-        // SHA-256 hash of the correct password
-        const PASSWORD_HASH = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+        // SHA-256 hash of the correct password (FALLBACK)
+        const FALLBACK_PASSWORD_HASH = 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3';
+        let PASSWORD_HASH = FALLBACK_PASSWORD_HASH; // Will be updated from Firebase if available
 
         const MAX_ATTEMPTS = 3;
         const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
@@ -365,6 +389,38 @@
             input.type = input.type === 'password' ? 'text' : 'password';
         }
 
+        // Load password from Firebase
+        async function loadPasswordFromFirebase() {
+            try {
+                if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) {
+                    console.log('Firebase not initialized, using fallback password');
+                    return FALLBACK_PASSWORD_HASH;
+                }
+
+                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                const docSnap = await window.firebaseGetDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    console.log('Password loaded from Firebase');
+                    return data.passwordHash || FALLBACK_PASSWORD_HASH;
+                } else {
+                    console.log('No password in Firebase, using fallback and saving current');
+                    // Save current password to Firebase for future use
+                    await window.firebaseSetDoc(docRef, {
+                        passwordHash: FALLBACK_PASSWORD_HASH,
+                        updatedAt: Date.now(),
+                        updatedBy: 'system'
+                    });
+                    return FALLBACK_PASSWORD_HASH;
+                }
+            } catch (err) {
+                console.error('Error loading password from Firebase:', err);
+                console.log('Using fallback password');
+                return FALLBACK_PASSWORD_HASH;
+            }
+        }
+
         // Attempt login
         async function attemptLogin() {
             if (isLockedOut()) return;
@@ -378,6 +434,9 @@
                 errorMessage.classList.add('show');
                 return;
             }
+
+            // Load password from Firebase (with fallback)
+            PASSWORD_HASH = await loadPasswordFromFirebase();
 
             const hash = await sha256(password);
 
