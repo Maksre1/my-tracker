@@ -1549,30 +1549,6 @@
         window.firebaseGetDoc = getDoc;
         window.firebaseAuth = auth;
 
-        // DEBUG CONSOLE
-        const debugConsole = document.createElement('div');
-        debugConsole.style.cssText = "position:fixed; bottom:80px; right:10px; background:rgba(0,0,0,0.8); color:#0f0; font-family:monospace; font-size:10px; padding:10px; border-radius:8px; z-index:99999; max-width:200px; pointer-events:none; border:1px solid #0f0;";
-        debugConsole.innerHTML = "<div>STATUS: <span id='dbg-status'>Init...</span></div><div>AUTH: <span id='dbg-auth'>...</span></div><div id='dbg-err' style='color:red'></div>";
-        document.body.appendChild(debugConsole);
-
-        function logDebug(msg, error = false) {
-            console.log(msg);
-            if (error) {
-                const errEl = document.getElementById('dbg-err');
-                const statusEl = document.getElementById('dbg-status');
-                if (errEl) errEl.innerText = msg;
-                if (statusEl) {
-                    statusEl.innerText = "ERROR";
-                    statusEl.style.color = "red";
-                }
-            } else {
-                const statusEl = document.getElementById('dbg-status');
-                if (statusEl) {
-                    statusEl.innerText = msg;
-                    statusEl.style.color = "#0f0";
-                }
-            }
-        }
 
         // Obfuscated credentials decoder
         const _0x4a2b = (s) => atob(s);
@@ -1583,14 +1559,12 @@
         };
 
         window.addEventListener('online', async () => {
-            logDebug("Online back");
             if (!auth.currentUser) {
                 const [e, p] = _0x3c1d();
                 try {
                     await signInWithEmailAndPassword(auth, e, p);
                 } catch (err) {
                     console.error("Re-auth failed:", err);
-                    logDebug(err.code, true);
                 }
             }
             updateSyncUI(navigator.onLine && !!auth.currentUser);
@@ -1601,37 +1575,37 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log("Firebase Authenticated 🔓");
-                logDebug("Auth OK");
-                const authEl = document.getElementById('dbg-auth');
-                if (authEl) authEl.innerText = "OK";
+
+
+
                 updateSyncUI(true);
 
                 // Real-time listener: data will sync instantly across devices
                 if (cloudSub) cloudSub();
                 cloudSub = onSnapshot(doc(db, "tracker", "mainData"), (docSnap) => {
                     if (docSnap.exists()) {
-                        logDebug("Data Rx");
+
                         processCloudUpdate(docSnap.data());
                     } else {
-                        logDebug("Data: Empty Doc");
+
                     }
                 }, (err) => {
                     console.error("Cloud Listener Error:", err);
-                    logDebug("DB Err: " + err.code, true);
+
                     updateSyncUI(false);
                 });
             } else {
                 console.log("Authenticating Firebase...");
-                const authEl = document.getElementById('dbg-auth');
-                if (authEl) authEl.innerText = "Signing In...";
-                logDebug("Signing In...");
+
+
+
 
                 const [e, p] = _0x3c1d();
                 signInWithEmailAndPassword(auth, e, p)
                     .catch(err => {
                         console.error("Firebase Auth Error:", err);
-                        logDebug("Auth Fail: " + err.code, true);
-                        if (authEl) authEl.innerText = "FAIL";
+
+
                         updateSyncUI(false);
                     });
             }
