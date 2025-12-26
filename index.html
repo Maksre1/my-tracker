@@ -3209,8 +3209,8 @@
                         `;
                         const wrapper = createSwipeWrapper(cardMarkup,
                             () => deleteSale(s.id),
-                            () => { /* No special right action for sales yet */ },
-                            'Удалить', 'Действие'
+                            () => openSaleEdit(s.id),
+                            'Удалить', 'Изменить'
                         );
                         container.appendChild(wrapper);
                     });
@@ -3801,6 +3801,7 @@
         }
 
         function renderAuditLog(log) {
+            if (localStorage.getItem('vapeRole') !== 'system') return;
             const list = document.getElementById('adminActivityLog');
             list.innerHTML = log.map(item => `
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">
@@ -3843,6 +3844,7 @@
         }
 
         function renderAdminHistory(history) {
+            if (localStorage.getItem('vapeRole') !== 'system') return;
             const list = document.getElementById('adminPassHistory');
 
             if (!history || history.length === 0) {
@@ -5385,6 +5387,14 @@
                 }
             }
         });
+
+        // Export functions to window for HTML access
+        window.sendChatMessage = sendChatMessage;
+        window.handleChatEnter = handleChatEnter;
+        window.closeChatModal = closeChatModal;
+        window.saveAISettings = saveAISettings;
+        window.clearChatHistory = clearChatHistory;
+        window.toggleUserAI = toggleUserAI;
 
     </script>
     </div> <!-- CONTAINER ENDS HERE -->
