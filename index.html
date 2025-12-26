@@ -936,6 +936,81 @@
             transition: all 0.3s ease;
             min-height: 200px;
         }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideDownToast 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @keyframes slideDownToast {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .toast.error {
+            border-color: rgba(255, 61, 113, 0.3);
+        }
+
+        /* Sync Badge */
+        .sync-badge {
+            position: fixed;
+            top: calc(10px + var(--safe-area-top));
+            right: 20px;
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
+        .sync-badge.online {
+            color: var(--success-color);
+            border-color: rgba(0, 255, 157, 0.2);
+        }
+
+        .sync-badge.offline {
+            color: var(--danger-color);
+            border-color: rgba(255, 61, 113, 0.2);
+        }
     </style>
 </head>
 
@@ -1278,6 +1353,11 @@
         </div>
     </div>
 
+    <div id="toast-container"></div>
+    <div class="sync-badge online" id="syncStatus">
+        <span id="syncIcon">☁️</span> <span id="syncText">СЕТЬ: OK</span>
+    </div>
+
     <!-- Loading Overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
@@ -1448,6 +1528,50 @@
         </div>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCScA2lHy_jvWi3J7Lf2bLTje_HR-AHeZc",
+            authDomain: "vape-price.firebaseapp.com",
+            projectId: "vape-price",
+            storageBucket: "vape-price.firebasestorage.app",
+            messagingSenderId: "251545583200",
+            appId: "1:251545583200:web:037acd5796580e28c6cd05",
+            measurementId: "G-03V6W6RVYL"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        enableIndexedDbPersistence(db).catch((err) => {
+            console.warn('Persistence status:', err.code);
+        });
+
+        window.firebaseDB = db;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+
+        window.addEventListener('online', () => updateSyncUI(true));
+        window.addEventListener('offline', () => updateSyncUI(false));
+
+        function updateSyncUI(online) {
+            const badge = document.getElementById('syncStatus');
+            const text = document.getElementById('syncText');
+            if (badge && text) {
+                if (online) {
+                    badge.className = 'sync-badge online';
+                    text.textContent = 'СЕТЬ: OK';
+                } else {
+                    badge.className = 'sync-badge offline';
+                    text.textContent = 'ОФФЛАЙН';
+                }
+            }
+        }
+    </script>
+
     <script>
         // Auth Check - redirect to login if not authenticated
         if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuthRemember')) {
@@ -1458,6 +1582,9 @@
         let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
         let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
         let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
+
+        // Load cloud data on startup
+        setTimeout(loadCloudData, 1500);
         let sortType = localStorage.getItem('vapeSortType') || 'date';
         let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
         let statsPeriod = 'day';
@@ -2054,10 +2181,80 @@
         }
 
         // Global Actions
-        function saveData() {
+        async function saveData() {
+            // Local save (fallback)
+            const now = Date.now();
             localStorage.setItem('vapeSales', JSON.stringify(sales));
             localStorage.setItem('vapeInventory', JSON.stringify(inventory));
             localStorage.setItem('vapeLosses', JSON.stringify(losses));
+            localStorage.setItem('vapeLastUpdate', now);
+
+            // Cloud save
+            if (window.firebaseDB) {
+                try {
+                    await firebaseSetDoc(firebaseDoc(window.firebaseDB, "tracker", "mainData"), {
+                        sales: sales,
+                        inventory: inventory,
+                        losses: losses,
+                        updatedAt: now
+                    });
+                    showToast("Синхронизировано ☁️");
+                } catch (e) {
+                    console.error("Firebase Save Error:", e);
+                    showToast("Ошибка облака ⚠️", "error");
+                }
+            }
+        }
+
+        async function loadCloudData() {
+            if (!window.firebaseDB) return;
+
+            try {
+                const docSnap = await firebaseGetDoc(firebaseDoc(window.firebaseDB, "tracker", "mainData"));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const cloudTime = data.updatedAt || 0;
+                    const localTime = parseInt(localStorage.getItem('vapeLastUpdate')) || 0;
+
+                    // Only update if cloud data is newer or local is empty
+                    if (cloudTime > localTime || (sales.length === 0 && inventory.length === 0)) {
+                        sales = data.sales || [];
+                        inventory = data.inventory || [];
+                        losses = data.losses || [];
+
+                        localStorage.setItem('vapeSales', JSON.stringify(sales));
+                        localStorage.setItem('vapeInventory', JSON.stringify(inventory));
+                        localStorage.setItem('vapeLosses', JSON.stringify(losses));
+                        localStorage.setItem('vapeLastUpdate', cloudTime);
+
+                        // Re-render current page
+                        const activeTab = document.querySelector('.tab.active span:last-child').textContent;
+                        if (activeTab === 'Продажи') renderSales();
+                        else if (activeTab === 'Склад') renderInventory();
+                        else if (activeTab === 'Убытки') renderLosses();
+                        else if (activeTab === 'Итоги') renderStats();
+
+                        updateDatalist();
+                        showToast("Данные загружены из облака ☁️");
+                    }
+                }
+            } catch (e) {
+                console.error("Firebase Load Error:", e);
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
         }
 
         function clearSales() {
