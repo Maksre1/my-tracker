@@ -2167,6 +2167,24 @@
                             <h6 style="margin: 10px 0 5px 0; font-size: 10px; opacity: 0.6;">⚙️ Настройки AI (Firebase):
                             </h6>
 
+                            <!-- AI Toggle -->
+                            <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                <label class="switch">
+                                    <input type="checkbox" id="aiEnabledCheck" onchange="saveAISettings()">
+                                    <span class="slider round"></span>
+                                </label>
+                                <span style="font-size: 12px;">Ассистент включен</span>
+                            </div>
+
+                            <!-- AI Toggle -->
+                            <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                                <label class="switch">
+                                    <input type="checkbox" id="aiEnabledCheck" onchange="saveAISettings()">
+                                    <span class="slider round"></span>
+                                </label>
+                                <span style="font-size: 12px;">Ассистент включен</span>
+                            </div>
+
                             <!-- Model Select -->
                             <div style="margin-bottom: 10px;">
                                 <label style="font-size: 10px; display: block; margin-bottom: 3px;">Модель:</label>
@@ -4705,11 +4723,12 @@
         // ==========================================
         const DAILY_MSG_LIMIT = 50;
         let aiConfig = {
+            enabled: true, // Вкл/выкл AI
             model: 'llama-3.3-70b-versatile',
             customModel: '',
             groqKey: '',
             geminiKey: '',
-            systemPrompt: 'Ты — дружелюбный помощник владельца вейп-шопа. Отвечай коротко и по делу.',
+            systemPrompt: 'Ты — дружелюбный помощник администратора вейп-шопа.',
             backupKeys: []
         };
 
@@ -4743,12 +4762,18 @@
         }
 
         function updateAdminUI() {
+            const enabledCheck = document.getElementById('aiEnabledCheck');
             const modelSel = document.getElementById('aiModelSelect');
             const customInp = document.getElementById('aiCustomModel');
             const groqInp = document.getElementById('aiGroqKey');
             const geminiInp = document.getElementById('aiGeminiKey');
             const promptInp = document.getElementById('aiSystemPrompt');
             const backupsInp = document.getElementById('aiBackupKeys');
+
+            if (enabledCheck) enabledCheck.checked = aiConfig.enabled !== false;
+            // Show/Hide AI Button based on config
+            const aiBtn = document.getElementById('aiFab');
+            if (aiBtn) aiBtn.style.display = (aiConfig.enabled !== false) ? 'flex' : 'none';
 
             if (modelSel) modelSel.value = aiConfig.model || 'llama-3.3-70b-versatile';
             if (customInp) {
@@ -4771,6 +4796,7 @@
         }
 
         async function saveAISettings() {
+            const enabled = document.getElementById('aiEnabledCheck').checked;
             const model = document.getElementById('aiModelSelect').value;
             const custom = document.getElementById('aiCustomModel').value;
             const groqKey = document.getElementById('aiGroqKey').value.trim();
@@ -4779,6 +4805,7 @@
             const backups = document.getElementById('aiBackupKeys').value.split('\n').map(k => k.trim()).filter(k => k);
 
             aiConfig = {
+                enabled,
                 model,
                 customModel: custom,
                 groqKey,
@@ -4852,15 +4879,20 @@
 
             // ИНСТРУКЦИИ ПО УПРАВЛЕНИЮ (ДЛЯ AI)
             const toolInstructions = `
-            ТЫ — АДМИНИСТРАТОР МАГАЗИНА. Ты можешь управлять данными через JSON в конце сообщения:
-            - Склад: {"action":"add_inventory","name":"Название","qty":10,"price":500}
-            - Удаление со склада: {"action":"delete_inventory","name":"Название"}
-            - Продажи: {"action":"add_sale","name":"Товар","qty":1,"price":1000}
-            - Удалить продажу: {"action":"delete_sale","id":"last" или "all"}
-            - Убытки/Брак: {"action":"add_loss","name":"Название","qty":1,"cost":300,"reason":"defect"}
-            - Долги: {"action":"add_debt","name":"Имя","amount":1000} | {"action":"clear_debts"}
-            - Заметки: {"action":"add_note","text":"текст"} | {"action":"delete_note","id":"all"}
-            ПРИМЕР: "Записал брак. {"action":"add_loss","name":"Brusko","qty":1,"cost":350,"reason":"defect"}"
+            ТЫ — АДМИНИСТРАТОР ВЕЙП-ШОПА.
+            Пользователь может писать цены так: "закуп 500 продажа 1000", "опт 300 рц 600".
+            ОБЯЗАТЕЛЬНО используй JSON в конце ответа для действий:
+
+            1. Добавить товар: {"action":"add_inventory","name":"Имя","qty":10,"cost":500,"price":1000}
+               (ЕСЛИ "cost" не указан, считай cost=0. ЕСЛИ "price" не указан, price = cost * 1.5)
+            2. Очистить весь склад: {"action":"clear_inventory"}
+            3. Удалить конкретный товар: {"action":"delete_inventory","name":"Имя"}
+            4. Продажа: {"action":"add_sale","name":"Имя","qty":1,"price":1000}
+            5. Убыток (брак/кража): {"action":"add_loss","name":"Имя","qty":1,"cost":300,"reason":"defect"}
+            6. Долги: {"action":"add_debt","name":"Имя","amount":500} | {"action":"clear_debts"}
+            7. Заметки: {"action":"add_note","text":"текст"} | {"action":"delete_note","id":"all"}
+
+            ПРИМЕР: "Ок. {"action":"add_inventory","name":"Husky","qty":5,"cost":300,"price":450}"
             `;
 
             const dynamicContext = `\nДанные магазина сейчас: Выручка ${revenue}, Прибыль ${profit}, Товаров ${products}.`;
@@ -4908,8 +4940,12 @@
                 if (!success) throw new Error("Все ключи недействительны или ошибка сети.");
 
                 removeTypingIndicator(typingId);
-                addMessageToChat("ai", aiReply);
-                processAIAction(aiReply); // <--- ВЫПОЛНЯЕМ КОМАНДЫ
+
+                // Очищаем ответ от JSON для пользователя
+                const cleanReply = aiReply.replace(/\{"action":.*\}/g, '').trim();
+
+                addMessageToChat("ai", cleanReply || "Выполнено.");
+                processAIAction(aiReply, message); // Передаем оригинальное сообщение пользователя (message) для логов
                 triggerHaptic('success');
 
                 // Update Usage
@@ -5014,6 +5050,13 @@
                         }
                         renderInventory();
                         showToast(`📦 Склад: ${data.name}`);
+                        break;
+
+                    case 'clear_inventory':
+                        inventory = [];
+                        saveData(`AI: Полная очистка склада`);
+                        renderInventory();
+                        showToast(`🗑️ Склад полностью очищен`);
                         break;
 
                     case 'delete_inventory':
@@ -5176,8 +5219,69 @@
             renderAdminChatHistory();
         }
 
+        // --- NEW FEATURES ---
+
+        // Restore active chat from local history
+        function loadChatHistory() {
+            const hist = JSON.parse(localStorage.getItem('vapeChatHistory') || '[]');
+            const container = document.getElementById('chatMessages');
+            if (hist.length > 0 && (!container.children.length || container.innerHTML.includes('Пусто'))) {
+                container.innerHTML = ''; // Clean placeholder
+                // Show last 10 messages
+                hist.slice(0, 10).reverse().forEach(h => {
+                    addMessageToChat('user', h.user);
+
+                    // Clean AI message from JSON before showing in history
+                    const cleanAi = h.ai.replace(/\{"action":.*\}/g, '').trim();
+                    if (cleanAi) addMessageToChat('ai', cleanAi);
+                });
+                addMessageToChat('ai', '<i>История восстановлена...</i>');
+                scrollToBottomChat();
+            }
+        }
+
+        // Real-Time Data Sync
+        function initRealTimeSync() {
+            if (!window.firebaseOnSnapshot || !window.firebaseDoc || !window.firebaseDB) return;
+
+            console.log("🔌 Connecting Real-Time Sync...");
+            const docRef = window.firebaseDoc(window.firebaseDB, "tracker", "data");
+
+            window.firebaseOnSnapshot(docRef, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const data = docSnap.data();
+
+                // Basic diff check to avoid loop (if timestamps match)
+                // We'll just overwrite local for now as "Cloud is Truth"
+
+                inventory = data.inventory || [];
+                sales = data.sales || [];
+                debts = data.debts || [];
+                losses = data.losses || [];
+                notes = data.notes || [];
+
+                // Save to localStorage so it persists on reload
+                // BUT do NOT call saveData() which pushes back to cloud!
+                localStorage.setItem('inventory', JSON.stringify(inventory));
+                localStorage.setItem('sales', JSON.stringify(sales));
+                localStorage.setItem('debts', JSON.stringify(debts));
+                localStorage.setItem('losses', JSON.stringify(losses));
+                localStorage.setItem('notes', JSON.stringify(notes));
+                localStorage.setItem('financialGoal', data.financialGoal || 0);
+
+                if (data.financialGoal) financialGoal = data.financialGoal;
+
+                renderAll();
+                // showToast("Синхронизация ☁️"); // Optional: too noisy?
+            });
+        }
+
         // Start
-        setTimeout(initAI, 1000); // Wait for DOM
+        setTimeout(() => {
+            initAI();
+            loadChatHistory();
+            initRealTimeSync();
+        }, 1000);
 
         // КЛИК ВНЕ ЧАТА ДЛЯ ЗАКРЫТИЯ
         window.addEventListener('mousedown', (e) => {
