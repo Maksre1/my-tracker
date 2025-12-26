@@ -298,7 +298,7 @@
 
         // System Password Hash (loaded from Firebase)
         // System Password Hash (loaded from Firebase with fallback)
-        let SYSTEM_PASSWORD_HASH = null; // Loaded dynamically from Firebase
+        let SYSTEM_PASSWORD_HASH = null; // Always load from Firebase (Security)
 
         // Check if already logged in (localStorage is default now)
         if (localStorage.getItem('vapeAuth') || sessionStorage.getItem('vapeAuth')) {
