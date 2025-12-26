@@ -1558,32 +1558,39 @@
         window.firebaseAuth = auth;
 
         // Auto-login to Firebase using our hardcoded admin account
-        // This keeps the database private while keeping the UI login simple
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log("Firebase Authenticated 🔓");
                 updateSyncUI(true);
-                loadCloudData(); // Load after auth
+                loadCloudData();
             } else {
                 console.log("Authenticating Firebase...");
                 signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape")
-                    .catch(err => console.error("Firebase Auth Error:", err));
+                    .catch(err => {
+                        console.error("Firebase Auth Error:", err);
+                        updateSyncUI(false, "ОШИБКА КЛЮЧА 🔑");
+                    });
             }
         });
 
-        window.addEventListener('online', () => updateSyncUI(navigator.onLine && !!auth.currentUser));
+        window.addEventListener('online', () => {
+            if (!auth.currentUser) {
+                signInWithEmailAndPassword(auth, "admin@vape.com", "artemvape");
+            }
+            updateSyncUI(navigator.onLine && !!auth.currentUser);
+        });
         window.addEventListener('offline', () => updateSyncUI(false));
 
-        function updateSyncUI(online) {
+        function updateSyncUI(online, customText) {
             const badge = document.getElementById('syncStatus');
             const text = document.getElementById('syncText');
             if (badge && text) {
                 if (online) {
                     badge.className = 'sync-badge online';
-                    text.textContent = 'СЕТЬ: OK';
+                    text.textContent = customText || 'СЕТЬ: OK';
                 } else {
                     badge.className = 'sync-badge offline';
-                    text.textContent = 'ОФФЛАЙН';
+                    text.textContent = customText || 'ОФФЛАЙН';
                 }
             }
         }
