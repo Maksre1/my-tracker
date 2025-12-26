@@ -2885,20 +2885,13 @@
         });
 
         async function loadAdminData() {
-            const statusEl = document.getElementById('adminPassStatus');
-            const dateEl = document.getElementById('adminPassDate');
-
             if (!window.firebaseDB) return;
 
             try {
-                // Subscribe to real-time updates for admin panel
-                window.firebaseOnSnapshot(docRef, (snap) => {
+                // 1. Monitor Activity & Global Stats
+                const mainDocRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
+                window.firebaseOnSnapshot(mainDocRef, (snap) => {
                     const data = snap.data() || {};
-                    if (data.passwordHash) {
-                        // ... password status removed from UI in prev step but we keep logic ...
-                    }
-
-                    // NEW: Activity Log and Last Seen
                     if (data.updatedAt) {
                         document.getElementById('adminLastSeen').textContent = new Date(data.updatedAt).toLocaleString('ru-RU');
                         let device = 'Web';
@@ -2915,14 +2908,21 @@
                     } else {
                         document.getElementById('adminActivityLog').innerHTML = '<div style="opacity:0.5; text-align:center;">Лента пуста</div>';
                     }
+                });
 
+                // 2. Monitor Password History (Secure collection)
+                const authDocRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                window.firebaseOnSnapshot(authDocRef, (snap) => {
+                    const data = snap.data() || {};
                     if (data.history) {
                         renderAdminHistory(data.history);
                     } else {
                         renderAdminHistory([]);
                     }
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) {
+                console.error("Admin Load Error:", e);
+            }
         }
 
         function renderAuditLog(log) {
