@@ -130,10 +130,17 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: calc(45px + var(--safe-area-top)) 20px calc(110px + var(--safe-area-bottom));
+            padding: calc(45px + var(--safe-area-top)) 0 calc(110px + var(--safe-area-bottom));
             min-height: 100vh;
             overflow-x: hidden;
             position: relative;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
         }
 
         body::before {
