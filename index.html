@@ -17,6 +17,8 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#000000">
     <link rel="icon" type="image/png" href="favicon.png">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1317,209 +1319,237 @@
                     <input type="number" id="salePrice" placeholder="Цена" inputmode="decimal" step="any" required>
                 </div>
 
-                <div style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;">
+                <div style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 15px;">
                     <label class="checkbox-group">
                         <input type="checkbox" id="useDate" checked onchange="toggleDateInput()">
                         <div class="checkbox-custom"></div>
-                        <span>Текущая дата</span>
+                        <span>Дата</span>
                     </label>
 
                     <label class="checkbox-group">
-                        <input type="checkbox" id="isDebt" onchange="toggleDebtInput()">
+                        <input type="checkbox" id="showBuyer" onchange="toggleCustomerInput()">
+                        <div class="checkbox-custom" style="border-color: var(--accent-color);"></div>
+                        <span>Клиент</span>
+                    </label>
+
+                    <label class="checkbox-group">
+                        <input type="checkbox" id="isDebt" onchange="toggleCustomerInput(); toggleDebtColor();">
                         <div class="checkbox-custom"
                             style="border-color: #ff9800; background: rgba(255, 152, 0, 0.05);"></div>
                         <span style="color: #ff9800;">В долг</span>
                     </label>
-
-                    <div id="debtorNameContainer" style="display: none; animation: fadeIn 0.3s ease;">
-                        <input type="text" id="debtorName" placeholder="ФИО должника"
-                            style="border-radius: 16px; background: rgba(255,152,0,0.08); border: 1px solid rgba(255,152,0,0.3); color: white; padding: 14px;">
-                    </div>
-
-                    <div id="manualDateContainer" style="display: none; animation: fadeIn 0.3s ease; margin-top: 10px;">
-                        <input type="date" id="saleDate"
-                            style="border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: white; padding: 14px;">
-                    </div>
                 </div>
 
-                <button id="addSaleBtn" class="main-btn" onclick="addSale()">ПРОДАТЬ</button>
-            </div>
-
-            <div class="history-header">
-                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-                    <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
-                        <select id="sortType" class="badge toggle-btn" onchange="setSortType(this.value)"
-                            style="padding-right: 30px; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M2%204L6%208L10%204%22%20stroke%3D%22white%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 10px center; appearance: none; outline: none; border: 1px solid var(--glass-border); flex: 1; height: 44px;">
-                            <option value="date" style="background:#222; color:#fff">По дате</option>
-                            <option value="amount" style="background:#222; color:#fff">По сумме</option>
-                            <option value="name" style="background:#222; color:#fff">По названию</option>
-                            <option value="popular" style="background:#222; color:#fff">Популярные</option>
-                            <option value="profit_day" style="background:#222; color:#fff">Прибыльный день</option>
-                        </select>
-                        <button id="sortDirBtn" class="badge toggle-btn" onclick="toggleSortDir()"
-                            style="width: 44px; min-width: 44px; padding: 0; font-size: 16px; border: 1px solid var(--glass-border);">↓</button>
+                <div id="debtorNameContainer"
+                    style="display: none; animation: fadeIn 0.3s ease; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                    <input type="text" id="debtorName" placeholder="👤 ФИО покупателя"
+                        style="border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; padding: 12px 14px; font-size: 14px;">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="debtorContact" placeholder="📞 Номер"
+                            style="flex:1; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; padding: 12px 14px; font-size: 14px;">
+                        <input type="text" id="debtorSocial" placeholder="✈️ TG / Соц-сети"
+                            style="flex:1; border-radius: 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; padding: 12px 14px; font-size: 14px;">
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <div id="calendarWrapper" class="date-filter-wrapper">
-                        <div class="calendar-trigger" id="calIcon"></div>
-                        <input type="date" id="dateFilter" class="hidden-picker" onchange="onDateChange(this)"
-                            onfocus="document.getElementById('calIcon').classList.add('active')"
-                            onblur="document.getElementById('calIcon').classList.remove('active')">
-                    </div>
-                    <button class="clear-btn" onclick="clearSales()">ОЧИСТИТЬ</button>
+
+                <div id="manualDateContainer" style="display: none; animation: fadeIn 0.3s ease; margin-bottom: 15px;">
+                    <input type="date" id="saleDate"
+                        style="border-radius: 16px; background: rgba(255,255,255,0.08); border: 1px solid var(--glass-border); color: white; padding: 14px; width: 100%;">
+                </div>
+
+                <div class="input-group" style="margin-top: 5px;">
+                    <input type="text" id="saleNote" placeholder="Заметка к продаже (необязательно)"
+                        style="border-radius: 16px; background: rgba(255,255,255,0.03); font-size: 13px; padding: 12px 14px;">
                 </div>
             </div>
-            <div id="salesDisplay"></div>
+
+            <button id="addSaleBtn" class="main-btn" onclick="addSale()">ПРОДАТЬ</button>
         </div>
 
-        <!-- Page: Inventory -->
-        <div id="inventoryPage" class="page">
-            <div class="input-card">
-                <div class="input-group">
-                    <input type="text" id="invName" placeholder="Ну рассказывай, чем закупился?" required>
-                </div>
-                <div class="input-group" style="display: flex; gap: 15px;">
-                    <input type="text" id="invStrength" placeholder="Крепость (необязательно)">
-                    <input type="number" id="invQty" placeholder="Шт." inputmode="numeric" pattern="[0-9]*" required>
-                </div>
-                <div class="input-group" style="display: flex; gap: 15px;">
-                    <input type="number" id="invCost" placeholder="Закуп (₽/шт)" inputmode="decimal" step="any"
-                        required>
-                    <input type="number" id="invPrice" placeholder="Цена продажи (₽)" inputmode="decimal" step="any"
-                        required>
-                </div>
-                <button class="main-btn" onclick="addInventory()">НА СКЛАД</button>
-            </div>
-
-            <div class="history-header" style="justify-content: flex-end; margin-top: 10px; margin-bottom: 15px;">
-                <button class="clear-btn" onclick="clearInventory()"
-                    style="width: 44px; padding: 0; background: rgba(255, 61, 113, 0.08);"
-                    title="Очистить склад">🗑️</button>
-            </div>
-
-            <!-- Inventory Stats -->
-            <div class="stats-grid" style="margin-bottom: 25px;">
-                <div class="total-box">
-                    <div>Закуплено на</div>
-                    <span id="invTotalCost">0</span> ₽
-                </div>
-                <div class="total-box profit">
-                    <div>Ожид. выручка</div>
-                    <span id="invTotalRevenue">0</span> ₽
+        <div class="history-header">
+            <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
+                    <select id="sortType" class="badge toggle-btn" onchange="setSortType(this.value)"
+                        style="padding-right: 30px; background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2012%2012%22%20fill%3D%22none%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cpath%20d%3D%22M2%204L6%208L10%204%22%20stroke%3D%22white%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 10px center; appearance: none; outline: none; border: 1px solid var(--glass-border); flex: 1; height: 44px;">
+                        <option value="date" style="background:#222; color:#fff">По дате</option>
+                        <option value="amount" style="background:#222; color:#fff">По сумме</option>
+                        <option value="name" style="background:#222; color:#fff">По названию</option>
+                        <option value="popular" style="background:#222; color:#fff">Популярные</option>
+                        <option value="profit_day" style="background:#222; color:#fff">Прибыльный день</option>
+                    </select>
+                    <button id="sortDirBtn" class="badge toggle-btn" onclick="toggleSortDir()"
+                        style="width: 44px; min-width: 44px; padding: 0; font-size: 16px; border: 1px solid var(--glass-border);">↓</button>
                 </div>
             </div>
-
-            <div class="stats-grid" style="margin-bottom: 25px;">
-                <div class="total-box">
-                    <div>Количество товара</div>
-                    <span id="invTotalCount">0</span> шт.
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div id="calendarWrapper" class="date-filter-wrapper">
+                    <div class="calendar-trigger" id="calIcon"></div>
+                    <input type="date" id="dateFilter" class="hidden-picker" onchange="onDateChange(this)"
+                        onfocus="document.getElementById('calIcon').classList.add('active')"
+                        onblur="document.getElementById('calIcon').classList.remove('active')">
                 </div>
-                <div class="total-box profit">
-                    <div>Разновидность</div>
-                    <span id="invTotalVariety">0</span> ед.
-                </div>
+                <button class="clear-btn" onclick="clearSales()">ОЧИСТИТЬ</button>
             </div>
+        </div>
+        <div id="salesDisplay"></div>
+    </div>
 
-            <div id="inventoryDisplay"></div>
+    <!-- Page: Inventory -->
+    <div id="inventoryPage" class="page">
+        <div class="input-card">
+            <div class="input-group">
+                <input type="text" id="invName" placeholder="Ну рассказывай, чем закупился?" required>
+            </div>
+            <div class="input-group" style="display: flex; gap: 15px;">
+                <input type="text" id="invStrength" placeholder="Крепость (необязательно)">
+                <input type="number" id="invQty" placeholder="Шт." inputmode="numeric" pattern="[0-9]*" required>
+            </div>
+            <div class="input-group" style="display: flex; gap: 15px;">
+                <input type="number" id="invCost" placeholder="Закуп (₽/шт)" inputmode="decimal" step="any" required>
+                <input type="number" id="invPrice" placeholder="Цена продажи (₽)" inputmode="decimal" step="any"
+                    required>
+            </div>
+            <button class="main-btn" onclick="addInventory()">НА СКЛАД</button>
         </div>
 
-        <!-- Page: Debts -->
-        <div id="debtsPage" class="page">
-            <div class="input-card" style="padding: 30px;">
-                <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">РАБОТА С ДОЛГАМИ</h3>
+        <div class="history-header" style="justify-content: flex-end; margin-top: 10px; margin-bottom: 15px;">
+            <button class="clear-btn" onclick="clearInventory()"
+                style="width: 44px; padding: 0; background: rgba(255, 61, 113, 0.08);"
+                title="Очистить склад">🗑️</button>
+        </div>
 
-                <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff9800;">
-                    <div>Общий долг</div>
-                    <span id="totalDebtsSum" style="color: #ff9800;">0</span> ₽
-                </div>
-
-                <div id="debtsDisplay"></div>
-
-                <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
-                    💡 Подсказка: Свайп вправо 🟢 — Оплачено<br>
-                    Свайп влево 🔴 — Простить (в убытки)
-                </div>
+        <!-- Inventory Stats -->
+        <div class="stats-grid" style="margin-bottom: 25px;">
+            <div class="total-box">
+                <div>Закуплено на</div>
+                <span id="invTotalCost">0</span> ₽
+            </div>
+            <div class="total-box profit">
+                <div>Ожид. выручка</div>
+                <span id="invTotalRevenue">0</span> ₽
             </div>
         </div>
 
-        <!-- Page: Losses -->
-        <div id="lossesPage" class="page">
-            <div class="input-card" style="padding: 30px;">
-                <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">УБЫТКИ / СПИСАНИЯ</h3>
-
-                <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff3b30;">
-                    <div>Убыток</div>
-                    <span id="lossesPageTotal" style="color: #ff3b30;">0</span> ₽
-                </div>
-
-                <button class="main-btn"
-                    style="margin-bottom: 25px; background: linear-gradient(135deg, #ff3d71, #ff6b6b); box-shadow: 0 10px 20px rgba(255, 61, 113, 0.2);"
-                    onclick="openLossModal()">ДОБАВИТЬ УБЫТОК</button>
-
-                <div id="lossesHistory"></div>
-
-                <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
-                    Здесь учитываются бракованные товары, потерянные <br> или если решил сам попарить или подарить.
-                </div>
+        <div class="stats-grid" style="margin-bottom: 25px;">
+            <div class="total-box">
+                <div>Количество товара</div>
+                <span id="invTotalCount">0</span> шт.
+            </div>
+            <div class="total-box profit">
+                <div>Разновидность</div>
+                <span id="invTotalVariety">0</span> ед.
             </div>
         </div>
 
-        <!-- Page: Stats -->
-        <div id="statsPage" class="page">
-            <div class="stats-period-selector">
-                <button class="period-btn active" onclick="setStatsPeriod('day')">День</button>
-                <button class="period-btn" onclick="setStatsPeriod('week')">Неделя</button>
-                <button class="period-btn" onclick="setStatsPeriod('month')">Месяц</button>
-                <button class="period-btn" onclick="setStatsPeriod('all')">Всё</button>
+        <div id="inventoryDisplay"></div>
+    </div>
+
+    <!-- Page: Debts -->
+    <div id="debtsPage" class="page">
+        <div class="input-card" style="padding: 30px;">
+            <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">РАБОТА С ДОЛГАМИ</h3>
+
+            <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff9800;">
+                <div>Общий долг</div>
+                <span id="totalDebtsSum" style="color: #ff9800;">0</span> ₽
             </div>
 
-            <div class="stats-grid">
-                <div class="total-box">
-                    <div>Выручка</div>
-                    <span id="statRevenue">0</span> ₽
-                </div>
-                <div class="total-box profit">
-                    <div>Прибыль</div>
-                    <span id="statProfit">0</span> ₽
-                </div>
-            </div>
+            <div id="debtsDisplay"></div>
 
-            <div class="stats-grid">
-                <div class="total-box" style="--accent-color: #ff6b6b;">
-                    <div>Убытки</div>
-                    <span id="statLosses" style="color: #ff6b6b;">0</span> ₽
-                </div>
-                <div class="total-box" style="--accent-color: #ffd93d;">
-                    <div>Продаж</div>
-                    <span id="statSalesCount">0</span> шт.
-                </div>
-            </div>
-
-            <div
-                style="margin: 25px 0 15px 12px; font-size: 11px; font-weight: bold; opacity: 0.5; text-transform: uppercase; letter-spacing: 1.5px;">
-                СКЛАД СЕЙЧАС</div>
-            <div class="stats-grid" style="margin-bottom: 30px;">
-                <div class="total-box" style="--accent-color: var(--secondary-accent);">
-                    <div>Стоимость</div>
-                    <span id="statInvValue">0</span> ₽
-                </div>
-                <div class="total-box profit" style="--accent-color: var(--success-color);">
-                    <div>Ожид. прибыль</div>
-                    <span id="statInvProfit">0</span> ₽
-                </div>
-            </div>
-
-            <div class="input-card" style="padding: 20px;">
-                <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">🔥 ТОП товары</h3>
-                <div id="topProducts"></div>
-            </div>
-
-            <div class="input-card" style="padding: 20px;">
-                <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">📉 Не продаётся</h3>
-                <div id="worstProducts"></div>
+            <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
+                💡 Подсказка: Свайп вправо 🟢 — Оплачено<br>
+                Свайп влево 🔴 — Простить (в убытки)
             </div>
         </div>
+    </div>
+
+    <!-- Page: Losses -->
+    <div id="lossesPage" class="page">
+        <div class="input-card" style="padding: 30px;">
+            <h3 style="margin: 0 0 25px 0; text-align: center; letter-spacing: 2px;">УБЫТКИ / СПИСАНИЯ</h3>
+
+            <div class="total-box" style="margin-bottom: 25px; --accent-color: #ff3b30;">
+                <div>Убыток</div>
+                <span id="lossesPageTotal" style="color: #ff3b30;">0</span> ₽
+            </div>
+
+            <button class="main-btn"
+                style="margin-bottom: 25px; background: linear-gradient(135deg, #ff3d71, #ff6b6b); box-shadow: 0 10px 20px rgba(255, 61, 113, 0.2);"
+                onclick="openLossModal()">ДОБАВИТЬ УБЫТОК</button>
+
+            <div id="lossesHistory"></div>
+
+            <div style="padding: 20px 10px 0; opacity: 0.6; font-size: 13px; text-align: center; line-height: 1.5;">
+                Здесь учитываются бракованные товары, потерянные <br> или если решил сам попарить или подарить.
+            </div>
+        </div>
+    </div>
+
+    <!-- Page: Stats -->
+    <div id="statsPage" class="page">
+        <div class="stats-period-selector">
+            <button class="period-btn active" onclick="setStatsPeriod('day')">День</button>
+            <button class="period-btn" onclick="setStatsPeriod('week')">Неделя</button>
+            <button class="period-btn" onclick="setStatsPeriod('month')">Месяц</button>
+            <button class="period-btn" onclick="setStatsPeriod('all')">Всё</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="total-box">
+                <div>Выручка</div>
+                <span id="statRevenue">0</span> ₽
+            </div>
+            <div class="total-box profit">
+                <div>Прибыль</div>
+                <span id="statProfit">0</span> ₽
+            </div>
+        </div>
+
+        <!-- Chart Card -->
+        <div class="input-card" style="padding: 20px; overflow: hidden;">
+            <h4
+                style="margin: 0 0 15px 0; font-size: 12px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 2px; text-align: center;">
+                График выручки</h4>
+            <div style="height: 200px; width: 100%; position: relative;">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="total-box" style="--accent-color: #ff6b6b;">
+                <div>Убытки</div>
+                <span id="statLosses" style="color: #ff6b6b;">0</span> ₽
+            </div>
+            <div class="total-box" style="--accent-color: #ffd93d;">
+                <div>Продаж</div>
+                <span id="statSalesCount">0</span> шт.
+            </div>
+        </div>
+
+        <div
+            style="margin: 25px 0 15px 12px; font-size: 11px; font-weight: bold; opacity: 0.5; text-transform: uppercase; letter-spacing: 1.5px;">
+            СКЛАД СЕЙЧАС</div>
+        <div class="stats-grid" style="margin-bottom: 30px;">
+            <div class="total-box" style="--accent-color: var(--secondary-accent);">
+                <div>Стоимость</div>
+                <span id="statInvValue">0</span> ₽
+            </div>
+            <div class="total-box profit" style="--accent-color: var(--success-color);">
+                <div>Ожид. прибыль</div>
+                <span id="statInvProfit">0</span> ₽
+            </div>
+        </div>
+
+        <div class="input-card" style="padding: 20px;">
+            <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">🔥 ТОП товары</h3>
+            <div id="topProducts"></div>
+        </div>
+
+        <div class="input-card" style="padding: 20px;">
+            <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">📉 Не продаётся</h3>
+            <div id="worstProducts"></div>
+        </div>
+    </div>
     </div>
 
     <!-- Edit Inventory Modal -->
@@ -1555,6 +1585,9 @@
             <div class="input-group" style="display: flex; gap: 10px;">
                 <input type="number" id="editSaleQty" placeholder="Кол-во" inputmode="numeric" pattern="[0-9]*">
                 <input type="number" id="editSalePrice" placeholder="Цена" inputmode="decimal" step="any">
+            </div>
+            <div class="input-group" style="margin-top: 10px;">
+                <input type="text" id="editSaleNote" placeholder="Заметка к продаже">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button class="main-btn" style="flex: 2;" onclick="saveSaleEdit()">СОХРАНИТЬ</button>
@@ -2168,34 +2201,33 @@
         function switchTab(tabName) {
             if (isSwitching) return;
 
+            const tabs = document.querySelectorAll('.tab');
+            let targetTab = null;
+            tabs.forEach(t => {
+                if (t.getAttribute('onclick').includes(`'${tabName}'`)) {
+                    targetTab = t;
+                }
+            });
+
             const currentTab = document.querySelector('.tab.active');
-            let targetTabIndex = 1;
-            if (tabName === 'inventory') targetTabIndex = 2;
-            if (tabName === 'losses') targetTabIndex = 3;
-            if (tabName === 'stats') targetTabIndex = 4;
-            if (tabName === 'data') targetTabIndex = 5;
-
-            const targetTab = document.querySelector(`.tab:nth-child(${targetTabIndex})`);
-
-            // If clicking same tab, do nothing
             if (currentTab === targetTab) return;
 
             isSwitching = true;
 
-            // 1. Update Tabs immediately for responsiveness
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            targetTab.classList.add('active');
+            // 1. Update Tabs immediately
+            tabs.forEach(t => t.classList.remove('active'));
+            if (targetTab) targetTab.classList.add('active');
 
-            // 2. Find active page
-            const activePage = document.querySelector('.page.active');
+            // 2. Find target page
             let targetPageId = 'salesPage';
             if (tabName === 'inventory') targetPageId = 'inventoryPage';
-            if (tabName === 'debts') targetPageId = 'debtsPage';
-            if (tabName === 'losses') targetPageId = 'lossesPage';
-            if (tabName === 'stats') targetPageId = 'statsPage';
-            if (tabName === 'data') targetPageId = 'dataPage';
+            else if (tabName === 'debts') targetPageId = 'debtsPage';
+            else if (tabName === 'losses') targetPageId = 'lossesPage';
+            else if (tabName === 'stats') targetPageId = 'statsPage';
+            else if (tabName === 'data') targetPageId = 'dataPage';
 
             const targetPage = document.getElementById(targetPageId);
+            const activePage = document.querySelector('.page.active');
 
             // Helper to render data
             const renderData = () => {
@@ -2432,10 +2464,25 @@
                 matches.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'autocomplete-item';
-                    div.innerHTML = `<b>${item.name}</b> <small style="float: right; color: var(--accent-color)">${item.qty} шт.</small>`;
+                    div.innerHTML = `
+                        <div style="display: flex; flex-direction: column;">
+                            <b>${item.name}</b>
+                            <small style="opacity: 0.6; font-size: 10px;">${item.strength || ''}</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: var(--accent-color); font-weight: bold;">${item.price || 0} ₽</div>
+                            <small style="opacity: 0.5;">${item.qty} шт.</small>
+                        </div>
+                    `;
+                    div.style.display = 'flex';
+                    div.style.justifyContent = 'space-between';
+                    div.style.alignItems = 'center';
+
                     div.onclick = () => {
                         input.value = item.name;
                         document.getElementById('salePrice').value = item.price || '';
+                        const qtyInput = document.getElementById('saleQty');
+                        if (!qtyInput.value) qtyInput.value = 1;
                         list.style.display = 'none';
                     };
                     list.appendChild(div);
@@ -2459,9 +2506,22 @@
             document.getElementById('manualDateContainer').style.display = useDate ? 'none' : 'block';
         }
 
-        function toggleDebtInput() {
+        function toggleCustomerInput() {
             const isDebt = document.getElementById('isDebt').checked;
-            document.getElementById('debtorNameContainer').style.display = isDebt ? 'block' : 'none';
+            const showBuyer = document.getElementById('showBuyer').checked;
+            document.getElementById('debtorNameContainer').style.display = (isDebt || showBuyer) ? 'flex' : 'none';
+        }
+
+        function toggleDebtColor() {
+            const isDebt = document.getElementById('isDebt').checked;
+            const btn = document.getElementById('addSaleBtn');
+            if (isDebt) {
+                btn.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
+                btn.innerText = 'В ДОЛГ';
+            } else {
+                btn.style.background = '';
+                btn.innerText = 'ПРОДАТЬ';
+            }
         }
 
         function addSale() {
@@ -2472,91 +2532,100 @@
             const manualDate = document.getElementById('saleDate').value;
             const isDebt = document.getElementById('isDebt').checked;
             const debtorName = document.getElementById('debtorName').value.trim();
+            const debtorContact = document.getElementById('debtorContact').value.trim();
+            const debtorSocial = document.getElementById('debtorSocial').value.trim();
+            const saleNote = document.getElementById('saleNote').value.trim();
 
-            if (name && !isNaN(qty) && !isNaN(price)) {
-                if (isDebt && !debtorName) {
-                    alert("Введите имя должника!");
-                    return;
-                }
-                // Anti-duplication check
-                const currentSignature = `${name}|${qty}|${price}`;
-                const timeNow = Date.now();
-                if (currentSignature === lastAddedSignature && (timeNow - lastAddedTime < 5000)) {
-                    const btn = document.getElementById('addSaleBtn');
-                    btn.classList.add('btn-error');
-                    btn.innerText = 'ПОДОЖДИТЕ...';
-
-                    setTimeout(() => {
-                        btn.classList.remove('btn-error');
-                        btn.innerText = 'ПРОДАТЬ';
-                    }, 1000);
-                    return;
-                }
-
-                let costPrice = 0;
-
-                // Deduct from inventory if matched
-                const invItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
-                if (invItem) {
-                    if (invItem.qty < qty) {
-                        if (!confirm(`На складе всего ${invItem.qty}. Продать все равно?`)) return;
-                    }
-                    costPrice = invItem.cost;
-                    invItem.qty -= qty;
-                }
-
-                const now = new Date();
-                let saleDateStr = now.toLocaleDateString('ru-RU');
-
-                if (!useDate) {
-                    if (manualDate) {
-                        const d = new Date(manualDate);
-                        saleDateStr = d.toLocaleDateString('ru-RU');
-                    } else {
-                        saleDateStr = 'Без даты';
-                    }
-                }
-
-                const sale = {
-                    id: Date.now(),
-                    name,
-                    qty,
-                    price,
-                    cost: costPrice,
-                    date: saleDateStr,
-                    timestamp: now.getTime(),
-                    isDebt,
-                    debtor: isDebt ? debtorName : null
-                };
-
-                if (isDebt) {
-                    debts.unshift(sale);
-                    saveData(`Добавлен долг: ${debtorName} (${name})`);
-                    showToast("Долг записан 🤝");
-                } else {
-                    sales.unshift(sale);
-                    saveData(`Продажа: ${name}`);
-                    showToast("Продано! 💸");
-                }
-
-                lastAddedSignature = currentSignature;
-                lastAddedTime = timeNow;
-
-                saveData();
-                renderSales();
-                renderDebts();
-                renderInventory(); // update stock count in view if switched back
-                updateDatalist();
-
-                document.getElementById('saleName').value = '';
-                document.getElementById('saleQty').value = '';
-                document.getElementById('salePrice').value = '';
-                document.getElementById('isDebt').checked = false;
-                document.getElementById('debtorNameContainer').style.display = 'none';
-                document.getElementById('debtorName').value = '';
-            } else {
+            if (!name || isNaN(qty) || isNaN(price)) {
                 alert("Заполни поля продажи!");
+                return;
             }
+
+            if (isDebt && !debtorName) {
+                alert("Введите имя должника!");
+                return;
+            }
+
+            // Anti-duplication check
+            const currentSignature = `${name}|${qty}|${price}`;
+            const timeNow = Date.now();
+            if (currentSignature === lastAddedSignature && (timeNow - lastAddedTime < 5000)) {
+                const btn = document.getElementById('addSaleBtn');
+                btn.classList.add('btn-error');
+                btn.innerText = 'ПОДОЖДИТЕ...';
+                setTimeout(() => {
+                    btn.classList.remove('btn-error');
+                    btn.innerText = 'ПРОДАТЬ';
+                }, 1000);
+                return;
+            }
+
+            let costPrice = 0;
+            // Deduct from inventory if matched
+            const invItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
+            if (invItem) {
+                if (invItem.qty < qty) {
+                    if (!confirm(`На складе всего ${invItem.qty}. Продать все равно?`)) return;
+                }
+                costPrice = invItem.cost;
+                invItem.qty -= qty;
+            }
+
+            const now = new Date();
+            let saleDateStr = now.toLocaleDateString('ru-RU');
+            if (!useDate) {
+                if (manualDate) {
+                    const d = new Date(manualDate);
+                    saleDateStr = d.toLocaleDateString('ru-RU');
+                } else {
+                    saleDateStr = 'Без даты';
+                }
+            }
+
+            const sale = {
+                id: Date.now(),
+                name,
+                qty,
+                price,
+                cost: costPrice,
+                date: saleDateStr,
+                timestamp: now.getTime(),
+                isDebt,
+                debtor: debtorName || null,
+                contact: debtorContact || null,
+                social: debtorSocial || null,
+                note: saleNote || null
+            };
+
+            if (isDebt) {
+                debts.unshift(sale);
+                saveData(`Добавлен долг: ${debtorName} (${name})`);
+                showToast("Долг записан 🤝");
+            } else {
+                sales.unshift(sale);
+                saveData(`Продажа: ${name}`);
+                showToast("Продано! 💸");
+            }
+
+            lastAddedSignature = currentSignature;
+            lastAddedTime = timeNow;
+
+            saveData();
+            renderSales();
+            renderDebts();
+            renderInventory();
+            updateDatalist();
+
+            document.getElementById('saleName').value = '';
+            document.getElementById('saleQty').value = '';
+            document.getElementById('salePrice').value = '';
+            document.getElementById('saleNote').value = '';
+            document.getElementById('isDebt').checked = false;
+            document.getElementById('showBuyer').checked = false;
+            document.getElementById('debtorNameContainer').style.display = 'none';
+            document.getElementById('debtorName').value = '';
+            document.getElementById('debtorContact').value = '';
+            document.getElementById('debtorSocial').value = '';
         }
 
         function deleteSale(id) {
@@ -2575,6 +2644,7 @@
                 document.getElementById('editSaleName').value = sale.name || '';
                 document.getElementById('editSaleQty').value = sale.qty || '';
                 document.getElementById('editSalePrice').value = sale.price || '';
+                document.getElementById('editSaleNote').value = sale.note || '';
                 document.getElementById('editSaleModal').style.display = 'flex';
             }
         }
@@ -2599,6 +2669,7 @@
                 sale.name = name;
                 sale.qty = qty;
                 sale.price = price;
+                sale.note = document.getElementById('editSaleNote').value.trim() || null;
                 saveData();
                 renderSales();
                 closeSaleModal();
@@ -2714,6 +2785,8 @@
                                     <button class="edit-btn" onclick="openSaleEdit(${s.id})">✎</button>
                                 </div>
                                 <small>${sortType === 'profit_day' ? s.date + ' • ' : ''}${s.qty} шт. × ${s.price} ₽ ${s.cost > 0 ? `<span class="badge badge-profit">+${profit.toLocaleString('ru-RU')} ₽</span>` : ''}</small>
+                                ${s.debtor ? `<div style="font-size: 10px; margin-top: 4px; color: var(--accent-color); opacity: 0.8;">👤 ${s.debtor}${s.contact || s.social ? ` • ${[s.contact, s.social].filter(x => x).join(' / ')}` : ''}</div>` : ''}
+                                ${s.note ? `<div style="font-size: 10px; margin-top: 2px; opacity: 0.6; font-style: italic;">📝 ${s.note}</div>` : ''}
                             </div>
                             <div class="item-right">
                                 <span class="item-price">${(s.price * s.qty).toLocaleString('ru-RU')} ₽</span>
@@ -2752,6 +2825,8 @@
                                 <button class="edit-btn" onclick="openSaleEdit(${s.id})">✎</button>
                             </div>
                             <small>${s.date} • ${s.qty} шт. × ${s.price} ₽ ${s.cost > 0 ? `<span class="badge badge-profit">+${profit.toLocaleString('ru-RU')} ₽</span>` : ''}</small>
+                            ${s.debtor ? `<div style="font-size: 10px; margin-top: 4px; color: var(--accent-color); opacity: 0.8;">👤 ${s.debtor}${s.contact || s.social ? ` • ${[s.contact, s.social].filter(x => x).join(' / ')}` : ''}</div>` : ''}
+                            ${s.note ? `<div style="font-size: 10px; margin-top: 2px; opacity: 0.6; font-style: italic;">📝 ${s.note}</div>` : ''}
                         </div>
                         <div class="item-right">
                             <span class="item-price">${(s.price * s.qty).toLocaleString('ru-RU')} ₽</span>
@@ -2787,6 +2862,7 @@
                             <span class="badge badge-debt" style="font-size: 10px;">ДОЛГ</span>
                         </div>
                         <small>${d.name} (${d.qty} шт.) • ${d.date}</small>
+                        ${d.contact ? `<div style="font-size: 10px; margin-top: 4px; opacity: 0.7;">📞 ${d.contact}</div>` : ''}
                     </div>
                     <div class="item-right" style="flex-direction: row; gap: 10px; align-items: center;">
                         <span class="item-price" style="color: #ff9800;">${(d.price * d.qty).toLocaleString('ru-RU')} ₽</span>
@@ -3637,12 +3713,15 @@
             document.getElementById('statInvValue').textContent = invCostTotal.toLocaleString('ru-RU');
             document.getElementById('statInvProfit').textContent = invProfitPotential.toLocaleString('ru-RU');
 
+            document.getElementById('statRevenue').innerText = revenue.toLocaleString('ru-RU');
+            document.getElementById('statProfit').innerText = profit.toLocaleString('ru-RU');
+            document.getElementById('statLosses').innerText = lossesTotal.toLocaleString('ru-RU');
+
+            renderRevenueChart(filteredSales, statsPeriod);
+
             // Update Losses Page Total if element exists
             const lpTotal = document.getElementById('lossesPageTotal');
             if (lpTotal) {
-                // Calculate overall total for the page display, or keep it period-based?
-                // Usually Losses page should show absolute total. 
-                // Let's use overall total for the page, and period total for the Stat box.
                 const overallLossesTotal = losses.reduce((sum, l) => sum + (l.cost * l.qty), 0);
                 lpTotal.textContent = overallLossesTotal.toLocaleString('ru-RU');
             }
@@ -3691,6 +3770,8 @@
                 `).join('');
             }
         }
+
+
 
         // Loss Functions
         function openLossModal() {
@@ -3996,6 +4077,97 @@
                 bar.style.background = 'var(--success-color)';
                 bar.style.boxShadow = '0 0 15px rgba(0, 240, 170, 0.5)';
             }
+        }
+
+        let revenueChartInstance = null;
+
+        function renderRevenueChart(salesData, period) {
+            const canvas = document.getElementById('revenueChart');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+
+            if (revenueChartInstance) {
+                revenueChartInstance.destroy();
+            }
+
+            // Group by date
+            const dailyData = {};
+            salesData.forEach(s => {
+                const date = s.date;
+                if (date === 'Без даты' || !date) return;
+                if (!dailyData[date]) dailyData[date] = 0;
+                dailyData[date] += s.price * s.qty;
+            });
+
+            // Sort dates
+            const labels = Object.keys(dailyData).sort((a, b) => {
+                try {
+                    const [da, ma, ya] = a.split('.');
+                    const [db, mb, yb] = b.split('.');
+                    return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+                } catch (e) { return 0; }
+            });
+
+            const data = labels.map(l => dailyData[l]);
+
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            revenueChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        borderColor: '#ffffff',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: labels.length > 15 ? 0 : 4,
+                        pointBackgroundColor: '#ffffff',
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx) => `Выручка: ${ctx.parsed.y.toLocaleString('ru-RU')} ₽`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: labels.length > 1,
+                            grid: { display: false },
+                            ticks: {
+                                color: 'rgba(255,255,255,0.5)',
+                                font: { size: 9 },
+                                maxRotation: 0,
+                                callback: function (val, index) {
+                                    const label = this.getLabelForValue(val);
+                                    if (labels.length > 7 && index % Math.floor(labels.length / 5) !== 0) return '';
+                                    return label.split('.')[0] + '.' + label.split('.')[1];
+                                }
+                            }
+                        },
+                        y: {
+                            display: false,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
         }
 
         // Init
