@@ -4459,6 +4459,18 @@
             renderNotes();
         }
 
+        function editNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+
+            const newText = prompt('Редактировать заметку:', note.text);
+            if (newText !== null && newText.trim() !== '') {
+                note.text = newText.trim();
+                saveData(`Отредактирована заметка`);
+                renderNotes();
+            }
+        }
+
         function renderNotes() {
             const container = document.getElementById('notesContainer');
             container.innerHTML = '';
@@ -4476,7 +4488,13 @@
                     </div>
                     <div class="note-delete" onclick="deleteNote(${note.id})">×</div>
                 `;
-                const wrapper = createSwipeWrapper(markup, () => deleteNote(note.id));
+                const wrapper = createSwipeWrapper(
+                    markup,
+                    () => deleteNote(note.id),
+                    () => editNote(note.id),
+                    "Удалить",
+                    "Изм."
+                );
                 container.appendChild(wrapper);
             });
         }
