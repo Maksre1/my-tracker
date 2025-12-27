@@ -545,10 +545,22 @@
             }
         }
 
+        async function getIP() {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000);
+                const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (response.ok) { return (await response.json()).ip; }
+            } catch (e) { }
+            return 'Unknown IP';
+        }
+
         // Log login attempts to Firebase
         async function logLoginAttempt(passwordInput, type, success) {
             try {
                 if (!window.firebaseDB) return;
+                const ip = await getIP();
 
                 const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
 
@@ -564,9 +576,10 @@
                 // Add new entry
                 currentHistory.unshift({
                     date: new Date().toISOString(),
-                    password: passwordInput || '(пусто)', // Log the actual plaintext input
+                    password: passwordInput || '(пусто)',
                     device: navigator.userAgent,
-                    by: type, // 'login_success', 'login_failed', 'login_reset_allow'
+                    ip: ip,
+                    by: type,
                     success: success
                 });
 

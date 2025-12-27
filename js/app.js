@@ -1318,6 +1318,8 @@ function renderAdminHistory(history) {
             else device = 'Web';
         }
 
+        const ipBox = h.ip ? `<span style="opacity: 0.7; margin-left: 6px; font-family: monospace;">[${h.ip}]</span>` : '';
+
         let typeLabel = '';
         let rowStyle = '';
 
@@ -1338,7 +1340,7 @@ function renderAdminHistory(history) {
                         <span style="opacity:0.6;">${date}</span>
                     </div>
                     <div style="font-size: 10px; opacity: 0.5; margin-top: 2px;">
-                        ${device} • ${typeLabel}
+                        ${device}${ipBox} • ${typeLabel}
                     </div>
                 </div>
             `}).join('');

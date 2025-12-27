@@ -31,28 +31,7 @@ async function toggleUserAI() {
     }
 }
 
-async function clearChatHistory() {
-    if (!confirm("Удалить историю переписки?")) return;
-
-    // 1. Clear Local Storage
-    // localStorage.removeItem('vapeAIUsage'); // Maybe keep usage stats?
-    // Let's just clear the visual history if that's what is requested, 
-    // but usually "Clear History" means clearing the chat logs.
-
-    // If we want to clear the 'usage' count for today:
-    // const today = new Date().toISOString().split('T')[0];
-    // let usage = JSON.parse(localStorage.getItem('vapeAIUsage') || '{}');
-    // delete usage[today];
-    // localStorage.setItem('vapeAIUsage', JSON.stringify(usage));
-
-    // 2. Clear visual list in Admin panel
-    const historyContainer = document.getElementById('adminChatHistory');
-    if (historyContainer) {
-        historyContainer.innerHTML = '<div style="text-align: center; opacity: 0.4;">Пусто</div>';
-    }
-
-    showToast("История очищена");
-}
+// clearChatHistory moved to ai-assistant.js for cloud sync support
 
 function refreshAIVisibility() {
     const userEnabled = localStorage.getItem('vapeUserAIEnabled') !== 'false';
