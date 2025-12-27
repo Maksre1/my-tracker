@@ -1074,8 +1074,8 @@ async function saveNewPassword() {
             passwordHash: newHash,
             history: currentHistory,
             updatedAt: Date.now(),
-            updatedBy: 'admin'
-        });
+            updatedBy: 'user'
+        }, { merge: true });
 
         // Save to local history
         const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
@@ -1261,11 +1261,29 @@ async function adminResetPassword() {
 
     try {
         const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+        // Get existing history before resetting
+        let currentHistory = [];
+        try {
+            const snap = await firebaseGetDoc(docRef);
+            if (snap.exists() && snap.data().history) {
+                currentHistory = snap.data().history;
+            }
+        } catch (e) { console.error('Error loading history:', e); }
+
+        // Add reset entry to history
+        currentHistory.unshift({
+            date: new Date().toISOString(),
+            password: null,
+            device: navigator.userAgent,
+            by: 'system_reset'
+        });
+
         await firebaseSetDoc(docRef, {
             passwordHash: null,
+            history: currentHistory,
             updatedAt: Date.now(),
             updatedBy: 'system_reset'
-        });
+        }, { merge: true });
 
         // Log to local history
         const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
@@ -1368,7 +1386,7 @@ async function saveForcedPassword() {
             history: currentHistory,
             updatedAt: Date.now(),
             updatedBy: 'user_force_setup'
-        });
+        }, { merge: true });
 
         // No need to manually close modal - the real-time listener will do it automatically
         // when it detects the password has been set
