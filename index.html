@@ -1507,7 +1507,7 @@
 
         <!-- Floating Action Button -->
         <!-- Floating Action Button: AI Assistant -->
-        <button class="ai-btn" onclick="openChatModal()" title="AI Помощник">
+        <button id="aiFab" class="ai-btn" onclick="openChatModal()" title="AI Помощник">
             <img src="ai_assistant.png" alt="AI">
         </button>
 
@@ -4622,11 +4622,53 @@
         const notesSwitch = document.getElementById('notesSwitch');
         const notesBtn = document.querySelector('.notes-btn');
 
-        function toggleUserAI() {
+        // ==========================================
+        // AI CONSTANTS & CONFIG (Moved up to avoid TDZ)
+        // ==========================================
+        const DAILY_MSG_LIMIT = 50;
+        let aiConfig = {
+            enabled: true, // Вкл/выкл AI
+            model: 'llama-3.3-70b-versatile',
+            customModel: '',
+            groqKey: '',
+            geminiKey: '',
+            systemPrompt: 'Ты — дружелюбный помощник администратора вейп-шопа.',
+            backupKeys: []
+        };
+
+        async function toggleUserAI() {
             const enabled = document.getElementById('userAISwitch').checked;
             localStorage.setItem('vapeUserAIEnabled', enabled);
             refreshAIVisibility();
             showToast(enabled ? "AI включен" : "AI скрыт");
+
+            // Also update admin status if needed
+            if (!enabled) {
+                // optional: logic if user disables it
+            }
+        }
+
+        async function clearChatHistory() {
+            if (!confirm("Удалить историю переписки?")) return;
+
+            // 1. Clear Local Storage
+            // localStorage.removeItem('vapeAIUsage'); // Maybe keep usage stats?
+            // Let's just clear the visual history if that's what is requested, 
+            // but usually "Clear History" means clearing the chat logs.
+
+            // If we want to clear the 'usage' count for today:
+            // const today = new Date().toISOString().split('T')[0];
+            // let usage = JSON.parse(localStorage.getItem('vapeAIUsage') || '{}');
+            // delete usage[today];
+            // localStorage.setItem('vapeAIUsage', JSON.stringify(usage));
+
+            // 2. Clear visual list in Admin panel
+            const historyContainer = document.getElementById('adminChatHistory');
+            if (historyContainer) {
+                historyContainer.innerHTML = '<div style="text-align: center; opacity: 0.4;">Пусто</div>';
+            }
+
+            showToast("История очищена");
         }
 
         function refreshAIVisibility() {
@@ -4755,16 +4797,7 @@
         // ==========================================
         // AI ASSISTANT LOGIC (GROQ + GEMINI + FIREBASE)
         // ==========================================
-        const DAILY_MSG_LIMIT = 50;
-        let aiConfig = {
-            enabled: true, // Вкл/выкл AI
-            model: 'llama-3.3-70b-versatile',
-            customModel: '',
-            groqKey: '',
-            geminiKey: '',
-            systemPrompt: 'Ты — дружелюбный помощник администратора вейп-шопа.',
-            backupKeys: []
-        };
+        // (Config moved to top)
 
         // Init: Load Settings from Firebase/Local
         async function initAI() {
