@@ -2116,6 +2116,69 @@ function renderRevenueChart(salesData, period) {
     });
 }
 
+// ==========================================
+// SWIPE NAVIGATION
+// ==========================================
+let touchStartX = 0;
+let touchEndX = 0;
+let touchStartY = 0;
+let touchEndY = 0;
+
+document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+}, { passive: true });
+
+document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipeGesture();
+}, { passive: true });
+
+function handleSwipeGesture() {
+    const swipeThreshold = 70; // Достаточное расстояние для свайпа
+    const verticalThreshold = 100; // Ограничение по вертикали, чтобы не срабатывало при скролле
+
+    const diffX = touchStartX - touchEndX;
+    const diffY = Math.abs(touchStartY - touchEndY);
+
+    // Если вертикальный сдвиг слишком большой — это скролл, а не свайп
+    if (diffY > verticalThreshold) return;
+    if (Math.abs(diffX) < swipeThreshold) return;
+
+    // Не свайпаем, если открыт инпут или модалка
+    const activeEl = document.activeElement;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName)) return;
+
+    const modalIds = [
+        'chatModal', 'notesModal', 'editModal', 'lossModal', 'addModal',
+        'helpPageModal', 'debtModal', 'calcModal', 'changePasswordModal'
+    ];
+    for (const id of modalIds) {
+        const m = document.getElementById(id);
+        if (m && (m.style.display === 'flex' || m.style.display === 'block')) return;
+    }
+
+    const tabOrder = ['sales', 'inventory', 'debts', 'losses', 'stats', 'data'];
+    const currentTabEl = document.querySelector('.tab.active');
+    if (!currentTabEl) return;
+
+    const currentTabName = tabOrder.find(name => currentTabEl.getAttribute('onclick').includes(name));
+    let currentIndex = tabOrder.indexOf(currentTabName);
+
+    if (diffX > swipeThreshold) {
+        // Swipe Left -> Next Tab
+        if (currentIndex < tabOrder.length - 1) {
+            switchTab(tabOrder[currentIndex + 1]);
+        }
+    } else if (diffX < -swipeThreshold) {
+        // Swipe Right -> Prev Tab
+        if (currentIndex > 0) {
+            switchTab(tabOrder[currentIndex - 1]);
+        }
+    }
+}
+
 // Init
 document.getElementById('goalInput').value = financialGoal || '';
 renderSales();
