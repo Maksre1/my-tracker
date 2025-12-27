@@ -11,6 +11,26 @@ let debts = JSON.parse(localStorage.getItem('vapeDebts')) || [];
 let notes = JSON.parse(localStorage.getItem('vapeNotes')) || [];
 let financialGoal = parseInt(localStorage.getItem('vapeFinancialGoal')) || 0;
 
+// Loading animation
+window.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            setTimeout(() => overlay.remove(), 400);
+        }, 800);
+    }
+});
+
+// Hide loading overlay manually if it gets stuck
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+        setTimeout(() => overlay.remove(), 400);
+    }
+}
+
 function updateDatalist() {
     console.log('Datalist updated');
 }
