@@ -4169,7 +4169,13 @@
                 topContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">Нет данных</div>';
             } else {
                 topContainer.innerHTML = sortedProducts.slice(0, 5).map((p, i) => {
-                    const colors = ['#ffffff', '#e0e0e0', '#c0c0c0', '#a0a0b0', '#808080'];
+                    const colors = [
+                        'linear-gradient(90deg, #00f2ff, #0072ff)',
+                        'linear-gradient(90deg, #7000ff, #ff00ea)',
+                        'linear-gradient(90deg, #00f0aa, #00a0ff)',
+                        'linear-gradient(90deg, #ffd93d, #ff9300)',
+                        'linear-gradient(90deg, #ff6b6b, #ff3d71)'
+                    ];
                     const width = (p.qty / maxQty) * 100;
                     return `
                         <div class="product-bar">
