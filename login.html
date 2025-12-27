@@ -437,8 +437,13 @@
                     console.log('✅ Password loaded from Firebase');
                     console.log('Updated at:', new Date(data.updatedAt).toLocaleString());
 
-                    // Cache password for offline use
-                    localStorage.setItem('cachedPasswordHash', data.passwordHash);
+                    // Cache password for offline use (but only if not null/reset)
+                    if (data.passwordHash) {
+                        localStorage.setItem('cachedPasswordHash', data.passwordHash);
+                    } else {
+                        // Password was reset, clear cache
+                        localStorage.removeItem('cachedPasswordHash');
+                    }
 
                     return data.passwordHash;
                 } else {

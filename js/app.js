@@ -1160,21 +1160,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('adminPanel').style.display = 'none';
     }
 
-    // 2. Check if Password is Set (Force Setup)
+    // 2. Check if Password is Set (Force Setup) - REAL-TIME MONITORING
     // Only check if we are online and firebase is ready.
-    // We'll use a loop to wait for firebaseDB
-    const checkInterval = setInterval(async () => {
-        if (window.firebaseDB && window.firebaseGetDoc) {
+    // We'll use a loop to wait for firebaseDB and then set up a real-time listener
+    const checkInterval = setInterval(() => {
+        if (window.firebaseDB && window.firebaseOnSnapshot) {
             clearInterval(checkInterval);
             const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-            try {
-                const snap = await firebaseGetDoc(docRef);
-                // If no doc or passwordHash is null, force setup
-                if (!snap.exists() || !snap.data().passwordHash) {
-                    console.log('⚠️ Password not set! Forcing setup.');
-                    document.getElementById('forceSetupModal').style.display = 'flex';
+
+            // Set up real-time listener for password changes
+            window.firebaseOnSnapshot(docRef, (snap) => {
+                try {
+                    const forceModal = document.getElementById('forceSetupModal');
+
+                    // Only show/manage modal for regular users, not admins (system role)
+                    if (role !== 'system') {
+                        if (!snap.exists() || !snap.data().passwordHash) {
+                            console.log('⚠️ Password not set! Showing setup modal.');
+                            forceModal.style.display = 'flex';
+                        } else {
+                            console.log('✅ Password is set! Hiding setup modal.');
+                            forceModal.style.display = 'none';
+                        }
+                    }
+                } catch (e) {
+                    console.error('Force check error:', e);
                 }
-            } catch (e) { console.error('Force check error:', e); }
+            }, (error) => {
+                console.error('Password listener error:', error);
+            });
         }
     }, 500);
 });
@@ -1259,8 +1273,10 @@ async function adminResetPassword() {
         localStorage.setItem('localPasswordHistory', JSON.stringify(history));
 
         renderAdminHistory();
-        alert('Пароль успешно сброшен!');
-    } catch (e) { alert('Ошибка: ' + e.message); }
+        showToast('✅ Пароль успешно сброшен! Пользователь сможет войти и установить новый пароль.', 'success');
+    } catch (e) {
+        showToast('Ошибка: ' + e.message, 'error');
+    }
 }
 
 function renderAdminHistory(history) {
@@ -1354,8 +1370,14 @@ async function saveForcedPassword() {
             updatedBy: 'user_force_setup'
         });
 
-        document.getElementById('forceSetupModal').style.display = 'none';
-        alert('Пароль установлен! 🎉');
+        // No need to manually close modal - the real-time listener will do it automatically
+        // when it detects the password has been set
+        showToast('🎉 Пароль установлен! Добро пожаловать!', 'success');
+
+        // But just in case, we'll close it after a short delay as a fallback
+        setTimeout(() => {
+            document.getElementById('forceSetupModal').style.display = 'none';
+        }, 1000);
     } catch (e) {
         errorDiv.textContent = 'Ошибка: ' + e.message;
         errorDiv.style.display = 'block';
