@@ -2074,7 +2074,7 @@
                         <span>📳 Вибрация (Haptic)</span>
                     </div>
                     <label class="switch">
-                        <input type="checkbox" id="hapticSwitch" onchange="toggleHapticSetting()">
+                        <input type="checkbox" id="hapticSwitch" onchange="toggleHapticSetting()" checked>
                         <span class="slider"></span>
                     </label>
                 </div>
@@ -4710,7 +4710,7 @@
             if (notesBtn) notesBtn.style.display = notesEnabled ? 'flex' : 'none';
 
             // Haptic
-            const hapticEnabled = localStorage.getItem('vapeHapticEnabled') === 'true';
+            const hapticEnabled = localStorage.getItem('vapeHapticEnabled') !== 'false';
             const hapticIntensity = localStorage.getItem('vapeHapticIntensity') || '2';
             const hapticSwitch = document.getElementById('hapticSwitch');
             const hapticIntensityRow = document.getElementById('hapticIntensityRow');
