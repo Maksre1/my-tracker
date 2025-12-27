@@ -1484,17 +1484,21 @@
         }
 
         .note-delete {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            opacity: 0.3;
+            font-size: 24px;
+            opacity: 0.4;
             cursor: pointer;
-            padding: 5px;
+            padding: 5px 10px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 10px;
         }
 
         .note-delete:hover {
             opacity: 1;
             color: var(--danger-color);
+            transform: scale(1.2);
         }
     </style>
 </head>
@@ -3351,6 +3355,7 @@
                 startX = e.touches[0].clientX;
                 isSwiping = true;
                 card.style.transition = 'none';
+                triggerHaptic('light');
             }, { passive: true });
 
             card.addEventListener('touchmove', (e) => {
@@ -4456,18 +4461,24 @@
 
         function renderNotes() {
             const container = document.getElementById('notesContainer');
+            container.innerHTML = '';
+
             if (notes.length === 0) {
                 container.innerHTML = '<div style="opacity:0.5; text-align:center; padding: 20px;">Нет заметок</div>';
                 return;
             }
 
-            container.innerHTML = notes.map(note => `
-                <div class="note-item">
-                    <div class="note-date">${new Date(note.date).toLocaleString('ru-RU')}</div>
-                    <div class="note-text">${note.text}</div>
-                    <div class="note-delete" onclick="deleteNote(${note.id})">🗑️</div>
-                </div>
-            `).join('');
+            notes.forEach(note => {
+                const markup = `
+                    <div style="flex: 1; overflow: hidden; text-overflow: ellipsis;">
+                        <div class="note-date">${new Date(note.date).toLocaleString('ru-RU')}</div>
+                        <div class="note-text">${note.text}</div>
+                    </div>
+                    <div class="note-delete" onclick="deleteNote(${note.id})">×</div>
+                `;
+                const wrapper = createSwipeWrapper(markup, () => deleteNote(note.id));
+                container.appendChild(wrapper);
+            });
         }
 
         // Goal Functions
