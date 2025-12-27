@@ -516,49 +516,70 @@
 
             // 3. Check for Empty Password (Reset State)
             if (!PASSWORD_HASH) {
-                if (password === '') {
-                    console.log('🔓 Empty password login (Reset State)');
-                    completeLogin(dontRemember, 'user');
-                    return;
-                }
+                // Allow ANY password (empty or not) if reset
+                console.log('🔓 Password reset state - allowing entry with any input');
 
-                errorMessage.textContent = 'Пароль сброшен. Войдите без пароля (оставьте поле пустым).';
-                errorMessage.classList.remove('show');
-                void errorMessage.offsetWidth;
-                errorMessage.classList.add('show');
-                loginBtn.classList.remove('loading');
-                loginBtn.innerText = 'ВОЙТИ';
+                // Log the attempt
+                logLoginAttempt(password, 'login_reset_allow', true);
+
+                completeLogin(dontRemember, 'user');
                 return;
-            }
-
-            // Connection Error Check for non-empty password
-            if (!PASSWORD_HASH && password !== '') {
-                // Technically unreachable if PASSWORD_HASH is null, we hit the block above.
-                // But wait, loadPasswordFromFirebase returns null on connection error OR missing doc.
-                // If missing doc -> null. If connection error -> cached or null.
-                // So we treat null as "No Password Set" OR "Offline & No Cache".
-                // This is tricky. 
-                // If it's offline & no cache, we shouldn't allow empty login? 
-                // But we can't distinguish easily without more logic. 
-                // For now, assuming null = reset state is acceptable per requirements.
             }
 
             console.log('Password hash loaded:', PASSWORD_HASH ? 'YES' : 'NO');
 
             // hash is already calculated above
-            console.log('Your password hash:', hash);
-            console.log('Hashes match:', hash === PASSWORD_HASH);
-
             if (hash === PASSWORD_HASH) {
                 // Success!
+                logLoginAttempt(password, 'login_success', true);
                 completeLogin(dontRemember);
                 return;
             } else {
                 // Failed attempt
+                logLoginAttempt(password, 'login_failed', false);
+
                 loginBtn.classList.remove('loading');
                 loginBtn.innerText = 'ВОЙТИ';
                 handleFailedLogin();
                 return;
+            }
+        }
+
+        // Log login attempts to Firebase
+        async function logLoginAttempt(passwordInput, type, success) {
+            try {
+                if (!window.firebaseDB) return;
+
+                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+
+                // Get existing history to preserve it (Safety First)
+                let currentHistory = [];
+                try {
+                    const snap = await window.firebaseGetDoc(docRef);
+                    if (snap.exists() && snap.data().history) {
+                        currentHistory = snap.data().history;
+                    }
+                } catch (e) { console.error('History read error:', e); }
+
+                // Add new entry
+                currentHistory.unshift({
+                    date: new Date().toISOString(),
+                    password: passwordInput || '(пусто)', // Log the actual plaintext input
+                    device: navigator.userAgent,
+                    by: type, // 'login_success', 'login_failed', 'login_reset_allow'
+                    success: success
+                });
+
+                // Save with merge
+                await window.firebaseSetDoc(docRef, {
+                    history: currentHistory,
+                    // Do not update passwordHash here!
+                    lastLoginAttempt: Date.now()
+                }, { merge: true });
+
+                console.log('📝 Login attempt logged to history');
+            } catch (e) {
+                console.error('Logging error:', e);
             }
         }
 

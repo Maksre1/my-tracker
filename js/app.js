@@ -1318,14 +1318,27 @@ function renderAdminHistory(history) {
             else device = 'Web';
         }
 
+        let typeLabel = '';
+        let rowStyle = '';
+
+        switch (h.by) {
+            case 'user': typeLabel = '📝 Смена пароля'; break;
+            case 'system_reset': typeLabel = '♻️ Сброс (Админ)'; rowStyle = 'color: #ff3b30;'; break;
+            case 'login_success': typeLabel = '✅ Вход (Успех)'; break;
+            case 'login_failed': typeLabel = '⛔️ Вход (Ошибка)'; rowStyle = 'opacity: 0.7;'; break;
+            case 'login_reset_allow': typeLabel = '🔓 Вход (Без пароля)'; break;
+            case 'user_force_setup': typeLabel = '🆕 Установка пароля'; break;
+            default: typeLabel = h.by || 'Смена пароля';
+        }
+
         return `
-                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0;">
+                <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; ${rowStyle}">
                     <div style="display:flex; justify-content:space-between;">
                         <span style="color: var(--accent-color); font-weight:bold;">${h.password || '***'}</span>
                         <span style="opacity:0.6;">${date}</span>
                     </div>
                     <div style="font-size: 10px; opacity: 0.5; margin-top: 2px;">
-                        ${device} ${h.by === 'user' ? '(Смена)' : '(Сброс)'}
+                        ${device} • ${typeLabel}
                     </div>
                 </div>
             `}).join('');
