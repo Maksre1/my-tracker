@@ -150,23 +150,52 @@ async function sendChatMessage() {
     // ИНСТРУКЦИИ ПО УПРАВЛЕНИЮ (ДЛЯ AI)
     const toolInstructions = `
             ТЫ — АДМИНИСТРАТОР ВЕЙП-ШОПА.
-            Пользователь может писать цены так: "закуп 500 продажа 1000", "опт 300 рц 600".
-            ОБЯЗАТЕЛЬНО используй JSON в конце ответа для действий:
+            Твоя цель: помогать владельцу магазина, анализировать продажи и склад.
+            
+            ПРАВИЛА ОТВЕТОВ:
+            1. Если пользователь просто спрашивает (например: "Как дела?", "Что продали?", "Сколько товара X?"), отвечай ОБЫЧНЫМ ТЕКСТОМ. Не используй JSON.
+            2. JSON используй ТОЛЬКО если пользователь ЯВНО просит совершить действие (продать, добавить, удалить, записать).
+            3. НЕ создавай заметки ("add_note"), если пользователь просто болтает или задает вопросы. Спросили — ответил текстом.
 
+            ФОРМАТ КОМАНД (JSON в конце ответа):
             1. Добавить товар: {"action":"add_inventory","name":"Имя","qty":10,"cost":500,"price":1000}
-               (ЕСЛИ "cost" не указан, считай cost=0. ЕСЛИ "price" не указан, price = cost * 1.5)
-            2. Очистить весь склад: {"action":"clear_inventory"}
-            3. Удалить конкретный товар: {"action":"delete_inventory","name":"Имя"}
+            2. Очистить склад: {"action":"clear_inventory"}
+            3. Удалить товар: {"action":"delete_inventory","name":"Имя"}
             4. Продажа: {"action":"add_sale","name":"Имя","qty":1,"price":1000}
             5. Убыток (брак/кража): {"action":"add_loss","name":"Имя","qty":1,"cost":300,"reason":"defect"}
             6. Долги: {"action":"add_debt","name":"Имя","amount":500} | {"action":"clear_debts"}
-            7. Заметки: {"action":"add_note","text":"текст"} | {"action":"delete_note","id":"all"}
-
-            ПРИМЕР: "Ок. {"action":"add_inventory","name":"Husky","qty":5,"cost":300,"price":450}"
+            7. Заметки (ТОЛЬКО ЕСЛИ ПРОСЯТ): {"action":"add_note","text":"текст"} | {"action":"delete_note","id":"all"}
             `;
 
-    const dynamicContext = `\nДанные магазина сейчас: Выручка ${revenue}, Прибыль ${profit}, Товаров ${products}.`;
-    const contextSystem = basePrompt + toolInstructions + dynamicContext;
+    // 4. Подготовка данных для контекста
+    const invData = JSON.parse(localStorage.getItem('inventory') || '[]');
+    const salesData = JSON.parse(localStorage.getItem('sales') || '[]');
+    
+    let inventoryList = "ПУСТО";
+    if (invData.length > 0) {
+        inventoryList = invData.map(i => `${i.name} (${i.qty}шт, ${i.price}₽)`).join(", ");
+    }
+
+    let salesList = "НЕТ ПРОДАЖ";
+    if (salesData.length > 0) {
+        // Берем последние 50 продаж для контекста
+        salesList = salesData.slice(0, 50).map(s => `[${s.date}] ${s.name} (${s.qty}шт)`).join("; ");
+    }
+
+    const dynamicContext = `
+    СОСТОЯНИЕ МАГАЗИНА:
+    - Выручка (все время): ${revenue}
+    - Прибыль (все время): ${profit}
+    - Всего позиций: ${products}
+    
+    ТЕКУЩИЙ СКЛАД (Товар: кол-во, цена):
+    ${inventoryList}
+
+    ПОСЛЕДНИЕ ПРОДАЖИ (50 шт):
+    ${salesList}
+    `;
+
+    const contextSystem = basePrompt + "\n" + toolInstructions + "\n" + dynamicContext;
 
     try {
         let success = false;
