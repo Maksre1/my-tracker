@@ -13,6 +13,12 @@ async function initAI() {
 
     // Sync with Firebase
     if (navigator.onLine) {
+        if (window.auth?.currentUser) {
+            console.log("initAI: Current User:", window.auth.currentUser.email, window.auth.currentUser.uid);
+        } else {
+            console.warn("initAI: No auth user found despite onLine");
+        }
+
         try {
             if (!window.db || !window.getDoc || !window.doc) return; // Wait for firebase init
             const docSnap = await window.getDoc(window.doc(window.db, "settings", "ai_config"));
