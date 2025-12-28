@@ -6,9 +6,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // CRITICAL SECURITY: Auth collection contains sensitive history
-    match /auth/{document} {
+    // CRITICAL SECURITY: Sensitive history strictly for admin
+    match /auth/adminPassword {
       allow read, write: if request.auth != null && request.auth.token.email == 'system@vape.com';
+    }
+
+    // PUBLIC STATUS: Non-sensitive document to check if password setup is required
+    match /auth/userPasswordState {
+      allow read, write: if request.auth != null;
     }
 
     // Login attempt logs (allows logging before user is authenticated)
