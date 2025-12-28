@@ -1277,7 +1277,7 @@ async function clearAuditLog() {
 }
 
 async function adminResetPassword() {
-    if (!confirm('ВНИМАНИЕ: Это сбросит пароль пользователя. Он сможет войти без пароля, но система потребует создать новый. Продолжить?')) return;
+    if (!confirm('ВНИМАНИЕ: Это сбросит пароль пользователя до системного "123456". Пользователь сможет войти нажав кнопку "Войти" без пароля, и система сразу потребует создать новый. Продолжить?')) return;
 
     try {
         const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
@@ -1390,13 +1390,20 @@ async function saveForcedPassword() {
         errorDiv.style.display = 'block';
         return;
     }
-    if (newPass.length < 3) {
-        errorDiv.textContent = 'Минимум 3 символа';
+    if (newPass.length < 6) {
+        errorDiv.textContent = 'Минимум 6 символов';
         errorDiv.style.display = 'block';
         return;
     }
 
     try {
+        // 0. Update Firebase Auth password
+        console.log('🔐 Syncing new password to Firebase Auth...');
+        const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+        if (window.auth.currentUser) {
+            await updatePassword(window.auth.currentUser, newPass);
+        }
+
         const hash = await sha256(newPass);
         const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
 
