@@ -98,10 +98,18 @@ async function saveAISettings() {
 
     // Save Firebase
     try {
-        await setDoc(doc(db, "settings", "ai_config"), aiConfig);
+        if (!window.db || !window.setDoc || !window.doc) {
+            throw new Error("Firebase not initialized");
+        }
+        await window.setDoc(window.doc(window.db, "settings", "ai_config"), aiConfig);
         showToast("Настройки обновлены ☁️");
     } catch (e) {
-        showToast("Сохранено локально", "error");
+        console.error("AI Save Error:", e);
+        if (e.code === 'permission-denied') {
+            showToast("Ошибка доступа к облаку (вы не админ?)", "error");
+        } else {
+            showToast("Сохранено локально (ошибка облака)", "error");
+        }
     }
 }
 
