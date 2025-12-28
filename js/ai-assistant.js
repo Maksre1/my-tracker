@@ -202,6 +202,7 @@ async function sendChatMessage() {
             - Убыток: {"action":"add_loss","name":"Название","qty":1,"cost":300,"reason":"defect"}
             - Долг: {"action":"add_debt","name":"Имя","amount":500}
             - Заметка: {"action":"add_note","text":"Текст"}
+            - Заказ/Бронь: {"action":"add_order","client":"Имя","item":"Товар","qty":1,"price":1000,"type":"reserve/preorder"}
             - Удалить товар полностью: {"action":"delete_inventory","name":"Название"}
             `;
 
@@ -209,6 +210,7 @@ async function sendChatMessage() {
     // Use global window variables ensuring we see the latest in-memory state
     const invData = (window.inventory && window.inventory.length > 0) ? window.inventory : JSON.parse(localStorage.getItem('vapeInventory') || '[]');
     const salesData = (window.sales && window.sales.length > 0) ? window.sales : JSON.parse(localStorage.getItem('vapeSales') || '[]');
+    const ordersData = (window.orders && window.orders.length > 0) ? window.orders : JSON.parse(localStorage.getItem('vapeOrders') || '[]');
 
     let inventoryList = "ПУСТО";
     if (invData.length > 0) {
@@ -227,12 +229,16 @@ async function sendChatMessage() {
     - Выручка (все время): ${revenue}
     - Прибыль (все время): ${profit}
     - Всего позиций: ${products}
+    - Активных заказов: ${ordersData.length}
     
-    ТЕКУЩИЙ СКЛАД (Товар: кол-во, цена):
+    ТЕКУЩИЙ СКЛАД:
     ${inventoryList}
 
-    ПОСЛЕДНИЕ ПРОДАЖИ (50 шт):
+    ПОСЛЕДНИЕ ПРОДАЖИ:
     ${salesList}
+
+    СПИСОК ЗАКАЗОВ:
+    ${ordersData.length > 0 ? ordersData.map(o => `${o.client}: ${o.item} (${o.type})`).join("; ") : "НЕТ ЗАКАЗОВ"}
     `;
 
     const contextSystem = basePrompt + "\n" + toolInstructions + "\n" + dynamicContext;
@@ -474,6 +480,23 @@ function processAIAction(text) {
                 saveData(`AI: Заметки удалены`);
                 renderNotes();
                 showToast(`🗑️ Заметки очищены`);
+                break;
+
+            case 'add_order':
+                if (!data.client || !data.item) return;
+                orders.unshift({
+                    id: Date.now().toString(),
+                    client: data.client,
+                    item: data.item,
+                    qty: parseInt(data.qty || 1),
+                    price: parseFloat(data.price || 0),
+                    type: data.type || 'reserve',
+                    date: new Date().toISOString()
+                });
+                saveData(`AI: Новый заказ от ${data.client}`);
+                if (typeof renderOrders === 'function') renderOrders();
+                else if (window.renderOrders) window.renderOrders();
+                showToast(`🛒 Заказ создан: ${data.client}`);
                 break;
         }
         triggerHaptic('success');
