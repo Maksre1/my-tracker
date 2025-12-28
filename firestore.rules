@@ -22,5 +22,17 @@ service cloud.firestore {
       allow create: if true;
       allow read: if request.auth != null && request.auth.token.email == 'system@vape.com';
     }
+
+    // AI Configuration: Read by all, Write only by admin
+    match /settings/ai_config {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.email == 'system@vape.com';
+    }
+
+    // AI Chat Logs: All users can log, only admin can read
+    match /ai_chat_logs/{document} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null && request.auth.token.email == 'system@vape.com';
+    }
   }
 }

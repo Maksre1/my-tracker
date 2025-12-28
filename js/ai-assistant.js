@@ -16,11 +16,20 @@ async function initAI() {
         try {
             const docSnap = await getDoc(doc(db, "settings", "ai_config"));
             if (docSnap.exists()) {
-                // Merge strategies
                 const cloudData = docSnap.data();
+
+                // Compare with current config to see if we should notify
+                const isDiff = JSON.stringify(aiConfig) !== JSON.stringify({ ...aiConfig, ...cloudData });
+
                 aiConfig = { ...aiConfig, ...cloudData };
                 localStorage.setItem('vapeAIConfig', JSON.stringify(aiConfig));
+
                 updateAdminUI();
+                if (typeof refreshAIVisibility === 'function') refreshAIVisibility();
+
+                if (isDiff && localStorage.getItem('vapeRole') === 'system') {
+                    showToast("Настройки AI синхронизированы ☁️");
+                }
             }
         } catch (e) {
             console.error("AI Config Sync Error:", e);
@@ -170,7 +179,7 @@ async function sendChatMessage() {
     // 4. Подготовка данных для контекста
     const invData = JSON.parse(localStorage.getItem('inventory') || '[]');
     const salesData = JSON.parse(localStorage.getItem('sales') || '[]');
-    
+
     let inventoryList = "ПУСТО";
     if (invData.length > 0) {
         inventoryList = invData.map(i => `${i.name} (${i.qty}шт, ${i.price}₽)`).join(", ");
