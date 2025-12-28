@@ -457,6 +457,21 @@
 
         .input-group {
             margin-bottom: 20px;
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+            z-index: 10;
         }
 
         input,

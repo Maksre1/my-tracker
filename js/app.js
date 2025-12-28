@@ -1003,6 +1003,12 @@ function openChangePasswordModal() {
     document.getElementById('passwordChangeError').style.display = 'none';
 }
 
+function togglePasswordVisibility(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
 function closeChangePasswordModal() {
     document.getElementById('changePasswordModal').style.display = 'none';
 }
@@ -1034,8 +1040,8 @@ async function saveNewPassword() {
         return;
     }
 
-    if (newPassword.length < 4) {
-        errorDiv.textContent = 'Пароль слишком короткий (минимум 4 символа)';
+    if (newPassword.length < 6) {
+        errorDiv.textContent = 'Пароль слишком короткий (минимум 6 символов)';
         errorDiv.style.display = 'block';
         return;
     }
