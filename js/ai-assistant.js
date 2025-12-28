@@ -14,7 +14,8 @@ async function initAI() {
     // Sync with Firebase
     if (navigator.onLine) {
         try {
-            const docSnap = await getDoc(doc(db, "settings", "ai_config"));
+            if (!window.db || !window.getDoc || !window.doc) return; // Wait for firebase init
+            const docSnap = await window.getDoc(window.doc(window.db, "settings", "ai_config"));
             if (docSnap.exists()) {
                 const cloudData = docSnap.data();
 

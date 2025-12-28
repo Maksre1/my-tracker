@@ -1027,6 +1027,9 @@
                     console.error("Cloud Listener Error:", err);
                     updateSyncUI(false);
                 });
+
+                // Initialize AI (Sync Config) only after Auth
+                if (window.initAI) window.initAI();
             } else {
                 // No authenticated user - redirect to login
                 console.log("No Firebase Auth session - redirecting to login");
