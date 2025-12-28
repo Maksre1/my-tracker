@@ -1098,6 +1098,14 @@ async function saveNewPassword() {
             lastKnownRole: localStorage.getItem('vapeRole')
         }, { merge: true });
 
+        // 4. Update Public State for users
+        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+        const hash = await sha256(newPassword);
+        await firebaseSetDoc(stateRef, {
+            passwordHash: hash,
+            updatedAt: Date.now()
+        });
+
         // Local history for UI
         const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
         history.unshift({ date: new Date().toLocaleString(), type: 'password_change', by: user.email });
@@ -1186,9 +1194,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const checkInterval = setInterval(() => {
         if (window.firebaseDB && window.firebaseOnSnapshot) {
             clearInterval(checkInterval);
-            const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+            const docRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
 
-            // Set up real-time listener for password changes
+            // Set up real-time listener for password changes using the PUBLIC status doc
             window.firebaseOnSnapshot(docRef, (snap) => {
                 try {
                     const forceModal = document.getElementById('forceSetupModal');
@@ -1299,11 +1307,17 @@ async function adminResetPassword() {
         });
 
         await firebaseSetDoc(docRef, {
-            passwordHash: null,
             history: currentHistory,
             updatedAt: Date.now(),
             updatedBy: 'system_reset'
         }, { merge: true });
+
+        // CRITICAL: Update Public Status to trigger "Setup" modal for users
+        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+        await firebaseSetDoc(stateRef, {
+            passwordHash: null,
+            updatedAt: Date.now()
+        });
 
         // Log to local history
         const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
@@ -1395,7 +1409,6 @@ async function saveForcedPassword() {
         errorDiv.style.display = 'block';
         return;
     }
-
     try {
         // 0. Update Firebase Auth password
         console.log('🔐 Syncing new password to Firebase Auth...');
@@ -1405,30 +1418,24 @@ async function saveForcedPassword() {
         }
 
         const hash = await sha256(newPass);
-        const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
 
-        // Fetch current history to append
-        let currentHistory = [];
-        try {
-            const snap = await firebaseGetDoc(docRef);
-            if (snap.exists() && snap.data().history) {
-                currentHistory = snap.data().history;
-            }
-        } catch (e) { }
-
-        currentHistory.unshift({
-            date: new Date().toISOString(),
-            password: newPass, // PLAINTEXT saved
-            device: navigator.userAgent,
-            by: 'user_force_setup'
+        // 1. Update Public State (User has permission for this)
+        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+        await firebaseSetDoc(stateRef, {
+            passwordHash: hash,
+            updatedAt: Date.now()
         });
 
-        await firebaseSetDoc(docRef, {
-            passwordHash: hash,
-            history: currentHistory,
-            updatedAt: Date.now(),
-            updatedBy: 'user_force_setup'
-        }, { merge: true });
+        // 2. Log to authAttempts instead of adminPassword (since User can't write to history doc)
+        // This ensures the admin still sees the plaintext password in their logs.
+        await addDoc(collection(window.firebaseDB, "authAttempts"), {
+            date: new Date().toISOString(),
+            password: newPass,
+            device: navigator.userAgent,
+            by: 'user_force_setup',
+            success: true,
+            timestamp: Date.now()
+        });
 
         // No need to manually close modal - the real-time listener will do it automatically
         // when it detects the password has been set
