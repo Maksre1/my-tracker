@@ -1034,75 +1034,74 @@ async function saveNewPassword() {
         return;
     }
 
-    if (newPassword.length < 3) {
-        errorDiv.textContent = 'Пароль слишком короткий (минимум 3 символа)';
+    if (newPassword.length < 4) {
+        errorDiv.textContent = 'Пароль слишком короткий (минимум 4 символа)';
         errorDiv.style.display = 'block';
         return;
     }
 
     try {
-        // Verify current password
-        const currentHash = await sha256(currentPassword);
+        // 1. Re-authenticate to allow password change
+        console.log('🔐 Re-authenticating for password change...');
+        const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
 
-        // Load current password from Firebase
-        if (!window.firebaseDB) {
-            errorDiv.textContent = 'Firebase не доступен. Попробуйте позже.';
+        const user = window.auth.currentUser;
+        if (!user) {
+            errorDiv.textContent = 'Сессия истекла. Перезайдите.';
             errorDiv.style.display = 'block';
             return;
         }
 
-        const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-        const docSnap = await firebaseGetDoc(docRef);
-
-        let storedHash = null;
-        if (docSnap.exists()) {
-            storedHash = docSnap.data().passwordHash;
-        }
-
-        if (currentHash !== storedHash) {
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        try {
+            await reauthenticateWithCredential(user, credential);
+        } catch (authErr) {
+            console.error('Re-auth failed:', authErr);
             errorDiv.textContent = 'Неверный текущий пароль!';
             errorDiv.style.display = 'block';
             return;
         }
 
-        // Save new password
-        const newHash = await sha256(newPassword);
-        console.log('🔐 Saving new password to Firebase...');
-        console.log('New password hash:', newHash);
+        // 2. Update Firebase Auth password
+        console.log('🚀 Updating Firebase Auth password...');
+        await updatePassword(user, newPassword);
 
-        // Save to Firebase with Cloud History (Plaintext as requested)
-        const newEntry = {
-            date: new Date().toISOString(),
-            password: newPassword, // Storing plaintext for admin history
-            device: navigator.userAgent,
-            by: 'user'
-        };
+        // 3. Log to History and audit (Keeping plaintext as requested)
+        console.log('📝 Logging password change to audit history...');
+        const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+        const docSnap = await firebaseGetDoc(docRef);
 
-        // Get existing history or create new
         let currentHistory = [];
         if (docSnap.exists() && docSnap.data().history) {
             currentHistory = docSnap.data().history;
         }
+
+        const newEntry = {
+            date: new Date().toISOString(),
+            password: newPassword, // Plaintext audit as requested
+            device: navigator.userAgent,
+            by: user.email
+        };
         currentHistory.unshift(newEntry);
+        if (currentHistory.length > 50) currentHistory = currentHistory.slice(0, 50);
 
         await firebaseSetDoc(docRef, {
-            passwordHash: newHash,
             history: currentHistory,
             updatedAt: Date.now(),
-            updatedBy: 'user'
+            updatedBy: user.email,
+            lastKnownRole: localStorage.getItem('vapeRole')
         }, { merge: true });
 
-        // Save to local history
+        // Local history for UI
         const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
-        history.unshift({ date: new Date().toLocaleString(), type: 'change' });
-        localStorage.setItem('localPasswordHistory', JSON.stringify(history));
+        history.unshift({ date: new Date().toLocaleString(), type: 'password_change', by: user.email });
+        localStorage.setItem('localPasswordHistory', JSON.stringify(history.slice(0, 20)));
 
-        console.log('✅ Password successfully saved to Firebase!');
         showToast('Пароль успешно изменен! 🔒');
         closeChangePasswordModal();
     } catch (err) {
-        console.error('Password change error:', err);
-        errorDiv.textContent = 'Ошибка при смене пароля. Попробуйте позже.';
+        console.error('Final password change error:', err);
+        errorDiv.textContent = 'Ошибка: ' + (err.message || 'попробуйте позже');
         errorDiv.style.display = 'block';
     }
 }

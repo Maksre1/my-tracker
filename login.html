@@ -490,20 +490,32 @@
             loginBtn.classList.add('loading');
             loginBtn.innerText = 'ВХОД...';
 
-            // We use a fixed email for the admin/system access
+            // Dual-role accounts
             const ADMIN_EMAIL = 'admin@vape.com';
+            const USER_EMAIL = 'user@vape.com';
 
             try {
-                // 1. Attempt real Firebase Authentication
-                console.log('🔐 Attempting Firebase Auth login...');
-                const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
-                console.log('✅ Firebase Auth successful:', userCredential.user.email);
-
-                // 2. Log the successful attempt (with plaintext password for monitoring)
-                await logLoginAttempt(password, 'firebase_auth_success', true);
-
-                // 3. Complete login and redirect
-                completeLogin(dontRemember, 'admin');
+                // 1. First, try Admin login
+                console.log('🔐 Trying Admin auth...');
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+                    console.log('✅ Admin login successful');
+                    await logLoginAttempt(password, 'firebase_admin_success', true);
+                    completeLogin(dontRemember, 'admin');
+                    return;
+                } catch (adminError) {
+                    // 2. If admin fails with wrong pass or no user, try regular User account
+                    if (adminError.code === 'auth/wrong-password' || adminError.code === 'auth/user-not-found') {
+                        console.log('🔐 Trying User auth...');
+                        const userCredential = await signInWithEmailAndPassword(auth, USER_EMAIL, password);
+                        console.log('✅ User login successful');
+                        await logLoginAttempt(password, 'firebase_user_success', true);
+                        completeLogin(dontRemember, 'user');
+                        return;
+                    }
+                    // If it's another error (like lockout or network), throw it to be handled below
+                    throw adminError;
+                }
             } catch (error) {
                 console.error('❌ Login failed:', error.code, error.message);
 
@@ -512,7 +524,13 @@
 
                 loginBtn.classList.remove('loading');
                 loginBtn.innerText = 'ВОЙТИ';
-                handleFailedLogin(error.code === 'auth/wrong-password' ? 'Неверный пароль' : 'Ошибка входа');
+
+                let errorMsg = 'Ошибка входа';
+                if (error.code === 'auth/wrong-password') errorMsg = 'Неверный пароль';
+                if (error.code === 'auth/user-not-found') errorMsg = 'Пользователь не найден';
+                if (error.code === 'auth/too-many-requests') errorMsg = 'Слишком много попыток. Попробуйте позже.';
+
+                handleFailedLogin(errorMsg);
             }
         }
 
