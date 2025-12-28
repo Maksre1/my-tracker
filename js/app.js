@@ -2115,10 +2115,18 @@ function renderRevenueChart(salesData, period) {
     // Group by date
     const dailyData = {};
     salesData.forEach(s => {
-        const date = s.date;
-        if (date === 'Без даты' || !date) return;
+        let date = s.date;
+        // If date is missing or "Без даты", try to recover it from timestamp
+        if (!date || date === 'Без даты') {
+            if (s.timestamp) {
+                const d = new Date(s.timestamp);
+                date = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+            } else {
+                return; // Skip only if no date info at all
+            }
+        }
         if (!dailyData[date]) dailyData[date] = 0;
-        dailyData[date] += s.price * s.qty;
+        dailyData[date] += (s.price || 0) * (s.qty || 0);
     });
 
     // Sort dates
