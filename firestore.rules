@@ -6,14 +6,16 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
     
-    // CRITICAL SECURITY: Auth collection contains plaintext password history
-    // Only admin@vape.com can access this sensitive data
+    // CRITICAL SECURITY: Auth collection contains sensitive history
     match /auth/{document} {
-      // Only admin can read plaintext password logs and history
+      allow read, write: if request.auth != null && request.auth.token.email == 'admin@vape.com';
+    }
+
+    // Login attempt logs (allows logging before user is authenticated)
+    match /authAttempts/{document} {
+      // Anyone can log an attempt; Only admin can read them
+      allow create: if true;
       allow read: if request.auth != null && request.auth.token.email == 'admin@vape.com';
-      
-      // Only admin can write (password changes, login attempts logging)
-      allow write: if request.auth != null && request.auth.token.email == 'admin@vape.com';
     }
   }
 }

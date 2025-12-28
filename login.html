@@ -283,7 +283,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
         const firebaseConfig = {
@@ -300,185 +300,21 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        window.firebaseDB = db;
-        window.firebaseDoc = doc;
-        window.firebaseGetDoc = getDoc;
-        window.firebaseSetDoc = setDoc;
-
-    </script>
-
-    <script>
-        // SHA-256 hash of the correct password
-        let PASSWORD_HASH = null; // Stored in Firebase
-
+        // Constants
         const MAX_ATTEMPTS = 3;
-        const LOCKOUT_DURATION = 60 * 60 * 1000; // 1 hour in ms
+        const LOCKOUT_DURATION = 60 * 60 * 1000;
 
-        // Clear any previous role on load
+        // Attach to window for HTML onclick
+        window.togglePassword = togglePassword;
+        window.attemptLogin = attemptLogin;
+
+        // Reset role on load
         localStorage.removeItem('vapeRole');
 
-        // System Password Hash (loaded from Firebase)
-        // System Password Hash (loaded from Firebase with fallback)
-        let SYSTEM_PASSWORD_HASH = null; // Always load from Firebase (Security)
-
-        // Check if already logged in (localStorage is default now)
         if (localStorage.getItem('vapeAuth') || sessionStorage.getItem('vapeAuth')) {
             window.location.href = 'index.html';
         }
 
-        // Hash function using Web Crypto API
-        async function sha256(message) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        // Get lockout data
-        function getLockoutData() {
-            const data = localStorage.getItem('vapeLockout');
-            if (data) {
-                return JSON.parse(data);
-            }
-            return { attempts: 0, lockedUntil: null };
-        }
-
-        // Save lockout data
-        function saveLockoutData(data) {
-            localStorage.setItem('vapeLockout', JSON.stringify(data));
-        }
-
-        // Check if locked out
-        function isLockedOut() {
-            const data = getLockoutData();
-            if (data.lockedUntil && Date.now() < data.lockedUntil) {
-                return true;
-            }
-            // Reset if lockout expired
-            if (data.lockedUntil && Date.now() >= data.lockedUntil) {
-                saveLockoutData({ attempts: 0, lockedUntil: null });
-            }
-            return false;
-        }
-
-        // Update UI based on lockout status
-        function updateLockoutUI() {
-            const data = getLockoutData();
-            const lockoutTimer = document.getElementById('lockoutTimer');
-            const loginBtn = document.getElementById('loginBtn');
-            const passwordInput = document.getElementById('passwordInput');
-            const attemptsLeft = document.getElementById('attemptsLeft');
-
-            if (isLockedOut()) {
-                lockoutTimer.classList.add('show');
-                loginBtn.disabled = true;
-                passwordInput.disabled = true;
-                attemptsLeft.textContent = '';
-                startCountdown(data.lockedUntil);
-            } else {
-                lockoutTimer.classList.remove('show');
-                loginBtn.disabled = false;
-                passwordInput.disabled = false;
-
-                if (data.attempts > 0) {
-                    attemptsLeft.textContent = `Осталось попыток: ${MAX_ATTEMPTS - data.attempts}`;
-                } else {
-                    attemptsLeft.textContent = '';
-                }
-            }
-        }
-
-        // Countdown timer
-        let countdownInterval;
-        function startCountdown(lockedUntil) {
-            clearInterval(countdownInterval);
-            const countdownEl = document.getElementById('lockoutCountdown');
-
-            countdownInterval = setInterval(() => {
-                const remaining = lockedUntil - Date.now();
-                if (remaining <= 0) {
-                    clearInterval(countdownInterval);
-                    saveLockoutData({ attempts: 0, lockedUntil: null });
-                    updateLockoutUI();
-                    return;
-                }
-
-                const minutes = Math.floor(remaining / 60000);
-                const seconds = Math.floor((remaining % 60000) / 1000);
-                countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
-        }
-
-        // Toggle password visibility
-        function togglePassword() {
-            const input = document.getElementById('passwordInput');
-            input.type = input.type === 'password' ? 'text' : 'password';
-        }
-
-        // Load password from Firebase
-        async function loadPasswordFromFirebase() {
-            try {
-                if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) {
-                    console.log('⚠️ Firebase not initialized yet');
-                    return null;
-                }
-
-                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-                const docSnap = await window.firebaseGetDoc(docRef);
-
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    console.log('✅ Password loaded from Firebase');
-                    console.log('Updated at:', new Date(data.updatedAt).toLocaleString());
-
-                    // Cache password for offline use (but only if not null/reset)
-                    if (data.passwordHash) {
-                        localStorage.setItem('cachedPasswordHash', data.passwordHash);
-                    } else {
-                        // Password was reset, clear cache
-                        localStorage.removeItem('cachedPasswordHash');
-                    }
-
-                    return data.passwordHash;
-                } else {
-                    console.log('⚠️ No password found in Firebase');
-                    return null;
-                }
-            } catch (err) {
-                console.error('❌ Error loading password from Firebase:', err);
-                // Try to load from cache (Offline Support)
-                const cachedHash = localStorage.getItem('cachedPasswordHash');
-                if (cachedHash) {
-                    console.log('📡 Using OFFLINE cached password');
-                    return cachedHash;
-                }
-                return null;
-            }
-        }
-
-        async function loadSystemPasswordFromFirebase() {
-            try {
-                if (!window.firebaseDB || !window.firebaseDoc || !window.firebaseGetDoc) return null;
-
-                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "systemPassword");
-                const docSnap = await window.firebaseGetDoc(docRef);
-
-                if (docSnap.exists()) {
-                    console.log('🛡️ System password loaded');
-                    // Cache for offline
-                    localStorage.setItem('cachedSystemPasswordHash', docSnap.data().passwordHash);
-                    return docSnap.data().passwordHash;
-                }
-                return null;
-            } catch (err) {
-                console.error('Error loading system password:', err);
-                // Offline support
-                return localStorage.getItem('cachedSystemPasswordHash');
-            }
-        }
-
-        // Attempt login
         async function attemptLogin() {
             if (isLockedOut()) return;
 
@@ -486,40 +322,32 @@
             const dontRemember = document.getElementById('dontRemember').checked;
             const loginBtn = document.getElementById('loginBtn');
 
-            // Set loading state
             loginBtn.classList.add('loading');
             loginBtn.innerText = 'ВХОД...';
 
-            // Dual-role accounts
             const ADMIN_EMAIL = 'admin@vape.com';
             const USER_EMAIL = 'user@vape.com';
 
             try {
-                // 1. First, try Admin login
                 console.log('🔐 Trying Admin auth...');
                 try {
                     const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
                     console.log('✅ Admin login successful');
                     await logLoginAttempt(password, 'firebase_system_success', true);
                     completeLogin(dontRemember, 'system');
-                    return;
                 } catch (adminError) {
-                    // 2. If admin fails with wrong pass or no user, try regular User account
                     if (adminError.code === 'auth/wrong-password' || adminError.code === 'auth/user-not-found') {
                         console.log('🔐 Trying User auth...');
                         const userCredential = await signInWithEmailAndPassword(auth, USER_EMAIL, password);
                         console.log('✅ User login successful');
                         await logLoginAttempt(password, 'firebase_user_success', true);
                         completeLogin(dontRemember, 'user');
-                        return;
+                    } else {
+                        throw adminError;
                     }
-                    // If it's another error (like lockout or network), throw it to be handled below
-                    throw adminError;
                 }
             } catch (error) {
                 console.error('❌ Login failed:', error.code, error.message);
-
-                // Log failed attempt
                 await logLoginAttempt(password, `login_failed_${error.code}`, false);
 
                 loginBtn.classList.remove('loading');
@@ -534,100 +362,94 @@
             }
         }
 
-        async function getIP() {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000);
-                const response = await fetch('https://api.ipify.org?format=json', { signal: controller.signal });
-                clearTimeout(timeoutId);
-                if (response.ok) { return (await response.json()).ip; }
-            } catch (e) { }
-            return 'Unknown IP';
-        }
-
-        // Log login attempts to Firebase
         async function logLoginAttempt(passwordInput, type, success) {
             try {
-                if (!window.firebaseDB) return;
                 const ip = await getIP();
-
-                const docRef = window.firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-
-                // Get existing history to preserve it (Safety First)
-                let currentHistory = [];
-                try {
-                    const snap = await window.firebaseGetDoc(docRef);
-                    if (snap.exists() && snap.data().history) {
-                        currentHistory = snap.data().history;
-                    }
-                } catch (e) { console.error('History read error:', e); }
-
-                // Add new entry
-                currentHistory.unshift({
+                // Log to separate collection to avoid read-permission issues on auth doc
+                await addDoc(collection(db, "authAttempts"), {
                     date: new Date().toISOString(),
                     password: passwordInput || '(пусто)',
                     device: navigator.userAgent,
                     ip: ip,
                     by: type,
-                    success: success
+                    success: success,
+                    timestamp: Date.now()
                 });
-
-                // Save with merge
-                await window.firebaseSetDoc(docRef, {
-                    history: currentHistory,
-                    // Do not update passwordHash here!
-                    lastLoginAttempt: Date.now()
-                }, { merge: true });
-
-                console.log('📝 Login attempt logged to history');
+                console.log('📝 Login attempt logged');
             } catch (e) {
                 console.error('Logging error:', e);
             }
         }
 
-        function completeLogin(dontRemember, role = 'user') {
+        async function getIP() {
+            try {
+                const resp = await fetch('https://api.ipify.org?format=json', { signal: AbortSignal.timeout(2000) });
+                return (await resp.json()).ip;
+            } catch (e) { return 'Unknown IP'; }
+        }
+
+        function completeLogin(dontRemember, role) {
             saveLockoutData({ attempts: 0, lockedUntil: null });
-
-            if (dontRemember) {
-                sessionStorage.setItem('vapeAuth', 'true');
-                localStorage.removeItem('vapeAuth');
-            } else {
-                localStorage.setItem('vapeAuth', 'true');
-                sessionStorage.removeItem('vapeAuth');
-            }
-
-            // Save Role
+            const storage = dontRemember ? sessionStorage : localStorage;
+            storage.setItem('vapeAuth', 'true');
             localStorage.setItem('vapeRole', role);
-
             window.location.href = 'index.html';
         }
 
-        function handleFailedLogin(msg = 'Неверный пароль') {
+        function handleFailedLogin(msg) {
             const data = getLockoutData();
             data.attempts++;
-
-            if (data.attempts >= MAX_ATTEMPTS) {
-                data.lockedUntil = Date.now() + LOCKOUT_DURATION;
-            }
-
+            if (data.attempts >= MAX_ATTEMPTS) data.lockedUntil = Date.now() + LOCKOUT_DURATION;
             saveLockoutData(data);
 
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = msg;
-            errorMessage.style.display = 'block';
-
+            const errEl = document.getElementById('errorMessage');
+            errEl.textContent = msg;
+            errEl.style.display = 'block';
             document.getElementById('passwordInput').value = '';
             updateLockoutUI();
         }
 
-        // Enter key support
-        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                attemptLogin();
-            }
-        });
+        function togglePassword() {
+            const input = document.getElementById('passwordInput');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
 
-        // Init
+        function getLockoutData() {
+            const data = localStorage.getItem('vapeLockout');
+            return data ? JSON.parse(data) : { attempts: 0, lockedUntil: null };
+        }
+
+        function saveLockoutData(data) {
+            localStorage.setItem('vapeLockout', JSON.stringify(data));
+        }
+
+        function isLockedOut() {
+            const data = getLockoutData();
+            if (data.lockedUntil && Date.now() < data.lockedUntil) return true;
+            if (data.lockedUntil && Date.now() >= data.lockedUntil) saveLockoutData({ attempts: 0, lockedUntil: null });
+            return false;
+        }
+
+        function updateLockoutUI() {
+            const data = getLockoutData();
+            const locked = isLockedOut();
+            document.getElementById('lockoutTimer').classList.toggle('show', locked);
+            document.getElementById('loginBtn').disabled = locked;
+            document.getElementById('passwordInput').disabled = locked;
+            document.getElementById('attemptsLeft').textContent = (!locked && data.attempts > 0) ? `Осталось попыток: ${MAX_ATTEMPTS - data.attempts}` : '';
+            if (locked) startCountdown(data.lockedUntil);
+        }
+
+        function startCountdown(lockedUntil) {
+            const el = document.getElementById('lockoutCountdown');
+            const itv = setInterval(() => {
+                const rem = lockedUntil - Date.now();
+                if (rem <= 0) { clearInterval(itv); updateLockoutUI(); return; }
+                el.textContent = `${Math.floor(rem / 60000).toString().padStart(2, '0')}:${Math.floor((rem % 60000) / 1000).toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') attemptLogin(); });
         updateLockoutUI();
     </script>
 </body>
