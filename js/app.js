@@ -18,6 +18,7 @@ let inventory = JSON.parse(localStorage.getItem('vapeInventory')) || [];
 let losses = JSON.parse(localStorage.getItem('vapeLosses')) || [];
 let debts = JSON.parse(localStorage.getItem('vapeDebts')) || [];
 let notes = JSON.parse(localStorage.getItem('vapeNotes')) || [];
+let orders = JSON.parse(localStorage.getItem('vapeOrders')) || [];
 let financialGoal = parseInt(localStorage.getItem('vapeFinancialGoal')) || 0;
 
 // Loading animation
@@ -82,6 +83,7 @@ function switchTab(tabName) {
     let targetPageId = 'salesPage';
     if (tabName === 'inventory') targetPageId = 'inventoryPage';
     else if (tabName === 'debts') targetPageId = 'debtsPage';
+    else if (tabName === 'orders') targetPageId = 'ordersPage';
     else if (tabName === 'losses') targetPageId = 'lossesPage';
     else if (tabName === 'stats') targetPageId = 'statsPage';
     else if (tabName === 'data') targetPageId = 'dataPage';
@@ -93,6 +95,7 @@ function switchTab(tabName) {
         if (tabName === 'sales') renderSales();
         else if (tabName === 'inventory') renderInventory();
         else if (tabName === 'debts') renderDebts();
+        else if (tabName === 'orders') renderOrders();
         else if (tabName === 'losses') renderLosses();
         else if (tabName === 'stats') renderStats();
         else if (tabName === 'data') updateInfoPageStats();
@@ -901,6 +904,7 @@ async function saveData(lastAction = null) {
                 losses: losses,
                 debts: debts,
                 notes: notes,
+                orders: orders,
                 financialGoal: financialGoal,
                 updatedAt: now,
                 lastSyncBy: authUser.email,
@@ -940,6 +944,7 @@ function processCloudUpdate(data) {
         losses = data.losses || [];
         debts = data.debts || [];
         notes = data.notes || [];
+        orders = data.orders || [];
         financialGoal = data.financialGoal || 0;
 
         localStorage.setItem('vapeSales', JSON.stringify(sales));
@@ -947,6 +952,7 @@ function processCloudUpdate(data) {
         localStorage.setItem('vapeLosses', JSON.stringify(losses));
         localStorage.setItem('vapeDebts', JSON.stringify(debts));
         localStorage.setItem('vapeNotes', JSON.stringify(notes));
+        localStorage.setItem('vapeOrders', JSON.stringify(orders));
         localStorage.setItem('vapeFinancialGoal', financialGoal);
         localStorage.setItem('vapeLastUpdate', cloudTime);
 
@@ -958,6 +964,7 @@ function processCloudUpdate(data) {
         if (activeTab === 'sales') renderSales();
         else if (activeTab === 'inventory') renderInventory();
         else if (activeTab === 'losses') renderLosses();
+        else if (activeTab === 'orders') renderOrders();
         else if (activeTab === 'stats') renderStats();
 
         updateDatalist();

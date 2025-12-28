@@ -213,6 +213,22 @@
             <div id="inventoryDisplay"></div>
         </div>
 
+        <!-- Page: Orders -->
+        <div id="ordersPage" class="page">
+            <div class="input-card" style="padding: 20px; margin-bottom: 20px;">
+                <h3 style="margin: 0 0 10px 0; text-align: center; letter-spacing: 2px;">ЗАКАЗЫ И БРОНЬ</h3>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 10px;">
+                    <div style="font-size: 12px; color: var(--text-secondary);">🟢 Бронь (со склада)</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);">🔵 Предзаказ</div>
+                </div>
+            </div>
+
+            <div id="ordersDisplay"></div>
+
+            <button class="fab" onclick="openOrderModal()"
+                style="bottom: 90px; right: 20px; width: 56px; height: 56px; font-size: 28px;">+</button>
+        </div>
+
         <!-- Page: Debts -->
         <div id="debtsPage" class="page">
             <div class="input-card" style="padding: 30px;">
@@ -317,6 +333,50 @@
             <div class="input-card" style="padding: 20px;">
                 <h3 style="margin: 0 0 15px 0; font-size: 16px; color: var(--text-secondary);">📉 Не продаётся</h3>
                 <div id="worstProducts"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Order Modal -->
+    <div id="orderModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 style="letter-spacing: 2px;">НОВЫЙ ЗАКАЗ</h3>
+            <div class="input-group">
+                <input type="text" id="orderClient" placeholder="Имя клиента" required>
+            </div>
+            <div class="input-group">
+                <input type="text" id="orderContact" placeholder="Контакты (необязательно)">
+            </div>
+            <div class="input-group">
+                <div class="autocomplete-container" style="width: 100%;">
+                    <input type="text" id="orderItem" placeholder="Товар" autocomplete="off">
+                    <div id="orderAutocompleteList" class="autocomplete-list"></div>
+                </div>
+            </div>
+            <div class="input-group" style="display: flex; gap: 10px;">
+                <input type="number" id="orderQty" placeholder="Кол-во" inputmode="numeric" value="1">
+                <input type="number" id="orderPrice" placeholder="Цена" inputmode="decimal">
+            </div>
+
+            <div class="input-group"
+                style="display: flex; justify-content: space-around; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px;">
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="orderType" value="reserve" checked>
+                    <span style="color: var(--success-color);">🟢 Бронь</span>
+                </label>
+                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="orderType" value="preorder">
+                    <span style="color: #2196F3;">🔵 Предзаказ</span>
+                </label>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="orderNote" placeholder="Комментарий">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="main-btn" style="flex: 2;" onclick="saveOrder()">СОЗДАТЬ</button>
+                <button class="clear-btn" style="flex: 1;" onclick="closeOrderModal()">ОТМЕНА</button>
             </div>
         </div>
     </div>
@@ -527,6 +587,8 @@
         <div class="tab active" onclick="switchTab('sales')"><span
                 style="font-size: 18px;">💸</span><span>Продажи</span></div>
         <div class="tab" onclick="switchTab('inventory')"><span style="font-size: 18px;">📦</span><span>Склад</span>
+        </div>
+        <div class="tab" onclick="switchTab('orders')"><span style="font-size: 18px;">🛒</span><span>Заказы</span>
         </div>
         <div class="tab" onclick="switchTab('debts')"><span style="font-size: 18px;">🤝</span><span>Долги</span>
         </div>
