@@ -216,17 +216,29 @@
         <!-- Page: Orders -->
         <div id="ordersPage" class="page">
             <div class="input-card" style="padding: 20px; margin-bottom: 20px;">
-                <h3 style="margin: 0 0 10px 0; text-align: center; letter-spacing: 2px;">ЗАКАЗЫ И БРОНЬ</h3>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 10px;">
-                    <div style="font-size: 12px; color: var(--text-secondary);">🟢 Бронь (со склада)</div>
-                    <div style="font-size: 12px; color: var(--text-secondary);">🔵 Предзаказ</div>
+                <h3 style="margin: 0 0 15px 0; text-align: center; letter-spacing: 2px;">ЗАКАЗЫ И БРОНЬ</h3>
+
+                <button class="main-btn" onclick="openOrderModal()"
+                    style="margin-bottom: 20px; background: linear-gradient(135deg, var(--accent-color), var(--secondary-accent)); box-shadow: 0 8px 20px rgba(0, 242, 255, 0.2);">
+                    ➕ НОВЫЙ ЗАКАЗ
+                </button>
+
+                <div style="display: flex; gap: 15px; justify-content: center;">
+                    <div
+                        style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;">
+                        <span
+                            style="width: 8px; height: 8px; background: var(--success-color); border-radius: 50%;"></span>
+                        Бронь
+                    </div>
+                    <div
+                        style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 8px; height: 8px; background: #2196F3; border-radius: 50%;"></span>
+                        Предзаказ
+                    </div>
                 </div>
             </div>
 
             <div id="ordersDisplay"></div>
-
-            <button class="fab" onclick="openOrderModal()"
-                style="bottom: 90px; right: 20px; width: 56px; height: 56px; font-size: 28px;">+</button>
         </div>
 
         <!-- Page: Debts -->
