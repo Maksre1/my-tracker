@@ -1022,275 +1022,281 @@ function logout() {
 // Password Change Functions
 function openChangePasswordModal() {
     document.getElementById('changePasswordModal').style.display = 'flex';
-    document.getElementById('currentPassword').value = '';
-    document.getElementById('newPassword').value = '';
-    document.getElementById('confirmPassword').value = '';
-    document.getElementById('passwordChangeError').style.display = 'none';
-}
+    // Make data globally accessible for AI Assistant
+    window.inventory = inventory;
+    window.sales = sales;
+    window.losses = losses;
+    window.debts = debts;
+    window.notes = notes;
+    window.financialGoal = financialGoal;
+    window.saveData = saveData;
+    window.renderSales = renderSales;
+    window.renderInventory = renderInventory;
+    window.showToast = showToast;
 
-function togglePasswordVisibility(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-    input.type = input.type === 'password' ? 'text' : 'password';
-}
-
-function closeChangePasswordModal() {
-    document.getElementById('changePasswordModal').style.display = 'none';
-}
-
-async function sha256(message) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function saveNewPassword() {
-    const currentPassword = document.getElementById('currentPassword').value.trim();
-    const newPassword = document.getElementById('newPassword').value.trim();
-    const confirmPassword = document.getElementById('confirmPassword').value.trim();
-    const errorDiv = document.getElementById('passwordChangeError');
-
-    // Validation
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        errorDiv.textContent = 'Заполните все поля!';
-        errorDiv.style.display = 'block';
-        return;
+    function togglePasswordVisibility(inputId) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        input.type = input.type === 'password' ? 'text' : 'password';
     }
 
-    if (newPassword !== confirmPassword) {
-        errorDiv.textContent = 'Новые пароли не совпадают!';
-        errorDiv.style.display = 'block';
-        return;
+    function closeChangePasswordModal() {
+        document.getElementById('changePasswordModal').style.display = 'none';
     }
 
-    if (newPassword.length < 6) {
-        errorDiv.textContent = 'Пароль слишком короткий (минимум 6 символов)';
-        errorDiv.style.display = 'block';
-        return;
+    async function sha256(message) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(message);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    try {
-        // 1. Re-authenticate to allow password change
-        console.log('🔐 Re-authenticating for password change...');
-        const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+    async function saveNewPassword() {
+        const currentPassword = document.getElementById('currentPassword').value.trim();
+        const newPassword = document.getElementById('newPassword').value.trim();
+        const confirmPassword = document.getElementById('confirmPassword').value.trim();
+        const errorDiv = document.getElementById('passwordChangeError');
 
-        const user = window.auth.currentUser;
-        if (!user) {
-            errorDiv.textContent = 'Сессия истекла. Перезайдите.';
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            errorDiv.textContent = 'Заполните все поля!';
             errorDiv.style.display = 'block';
             return;
         }
 
-        const credential = EmailAuthProvider.credential(user.email, currentPassword);
-        try {
-            await reauthenticateWithCredential(user, credential);
-        } catch (authErr) {
-            console.error('Re-auth failed:', authErr);
-            errorDiv.textContent = 'Неверный текущий пароль!';
+        if (newPassword !== confirmPassword) {
+            errorDiv.textContent = 'Новые пароли не совпадают!';
             errorDiv.style.display = 'block';
             return;
         }
 
-        // 2. Update Firebase Auth password
-        console.log('🚀 Updating Firebase Auth password...');
-        await updatePassword(user, newPassword);
-
-        // 3. Log to History and audit (Keeping plaintext as requested)
-        console.log('📝 Logging password change to audit history...');
-        const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-        const docSnap = await firebaseGetDoc(docRef);
-
-        let currentHistory = [];
-        if (docSnap.exists() && docSnap.data().history) {
-            currentHistory = docSnap.data().history;
+        if (newPassword.length < 6) {
+            errorDiv.textContent = 'Пароль слишком короткий (минимум 6 символов)';
+            errorDiv.style.display = 'block';
+            return;
         }
 
-        const newEntry = {
-            date: new Date().toISOString(),
-            password: newPassword, // Plaintext audit as requested
-            device: navigator.userAgent,
-            by: user.email
-        };
-        currentHistory.unshift(newEntry);
-        if (currentHistory.length > 50) currentHistory = currentHistory.slice(0, 50);
-
-        await firebaseSetDoc(docRef, {
-            history: currentHistory,
-            updatedAt: Date.now(),
-            updatedBy: user.email,
-            lastKnownRole: localStorage.getItem('vapeRole')
-        }, { merge: true });
-
-        // 4. Update Public State for users
-        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
-        const hash = await sha256(newPassword);
-        await firebaseSetDoc(stateRef, {
-            passwordHash: hash,
-            updatedAt: Date.now()
-        });
-
-        // Local history for UI
-        const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
-        history.unshift({ date: new Date().toLocaleString(), type: 'password_change', by: user.email });
-        localStorage.setItem('localPasswordHistory', JSON.stringify(history.slice(0, 20)));
-
-        showToast('Пароль успешно изменен! 🔒');
-        closeChangePasswordModal();
-    } catch (err) {
-        console.error('Final password change error:', err);
-        errorDiv.textContent = 'Ошибка: ' + (err.message || 'попробуйте позже');
-        errorDiv.style.display = 'block';
-    }
-}
-
-function clearSales() {
-    if (confirm("Очистить историю продаж?")) {
-        sales = [];
-        saveData();
-        renderSales();
-    }
-}
-
-function clearInventory() {
-    if (confirm("Очистить весь склад?")) {
-        inventory = [];
-        saveData();
-        renderInventory();
-        updateDatalist();
-    }
-}
-
-async function exportData() {
-    const data = {
-        sales,
-        inventory,
-        losses,
-        exportedAt: new Date().toISOString()
-    };
-    const jsonStr = JSON.stringify(data, null, 2);
-
-    // Try sharing if supported/mobile
-    if (navigator.share) {
         try {
-            const file = new File([jsonStr], `vape_backup_${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'Резервная копия Vape Tracker',
-                    text: 'Моя база продаж и склада.'
-                });
-                return; // Successfully shared, don't download
+            // 1. Re-authenticate to allow password change
+            console.log('🔐 Re-authenticating for password change...');
+            const { updatePassword, reauthenticateWithCredential, EmailAuthProvider } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+
+            const user = window.auth.currentUser;
+            if (!user) {
+                errorDiv.textContent = 'Сессия истекла. Перезайдите.';
+                errorDiv.style.display = 'block';
+                return;
             }
-        } catch (e) {
-            console.log('Sharing failed, falling back to download', e);
-        }
-    }
 
-    // Fallback to simple download
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `vape_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
+            const credential = EmailAuthProvider.credential(user.email, currentPassword);
+            try {
+                await reauthenticateWithCredential(user, credential);
+            } catch (authErr) {
+                console.error('Re-auth failed:', authErr);
+                errorDiv.textContent = 'Неверный текущий пароль!';
+                errorDiv.style.display = 'block';
+                return;
+            }
 
-/* Admin & Force Setup Logic */
-// Check triggers on load
-document.addEventListener('DOMContentLoaded', async () => {
-    const role = localStorage.getItem('vapeRole');
+            // 2. Update Firebase Auth password
+            console.log('🚀 Updating Firebase Auth password...');
+            await updatePassword(user, newPassword);
 
-    // 1. Show Admin Panel
-    if (role === 'system') {
-        document.getElementById('adminPanel').style.display = 'block';
-        loadAdminData();
-    } else {
-        document.getElementById('adminPanel').style.display = 'none';
-    }
+            // 3. Log to History and audit (Keeping plaintext as requested)
+            console.log('📝 Logging password change to audit history...');
+            const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+            const docSnap = await firebaseGetDoc(docRef);
 
-    // 2. Check if Password is Set (Force Setup) - REAL-TIME MONITORING
-    // Only check if we are online and firebase is ready.
-    // We'll use a loop to wait for firebaseDB and then set up a real-time listener
-    const checkInterval = setInterval(() => {
-        if (window.firebaseDB && window.firebaseOnSnapshot) {
-            clearInterval(checkInterval);
-            const docRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+            let currentHistory = [];
+            if (docSnap.exists() && docSnap.data().history) {
+                currentHistory = docSnap.data().history;
+            }
 
-            // Set up real-time listener for password changes using the PUBLIC status doc
-            window.firebaseOnSnapshot(docRef, (snap) => {
-                try {
-                    const forceModal = document.getElementById('forceSetupModal');
+            const newEntry = {
+                date: new Date().toISOString(),
+                password: newPassword, // Plaintext audit as requested
+                device: navigator.userAgent,
+                by: user.email
+            };
+            currentHistory.unshift(newEntry);
+            if (currentHistory.length > 50) currentHistory = currentHistory.slice(0, 50);
 
-                    // Only show/manage modal for regular users, not admins (system role)
-                    if (role !== 'system') {
-                        if (!snap.exists() || !snap.data().passwordHash) {
-                            console.log('⚠️ Password not set! Showing setup modal.');
-                            forceModal.style.display = 'flex';
-                        } else {
-                            console.log('✅ Password is set! Hiding setup modal.');
-                            forceModal.style.display = 'none';
-                        }
-                    }
-                } catch (e) {
-                    console.error('Force check error:', e);
-                }
-            }, (error) => {
-                console.error('Password listener error:', error);
+            await firebaseSetDoc(docRef, {
+                history: currentHistory,
+                updatedAt: Date.now(),
+                updatedBy: user.email,
+                lastKnownRole: localStorage.getItem('vapeRole')
+            }, { merge: true });
+
+            // 4. Update Public State for users
+            const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+            const hash = await sha256(newPassword);
+            await firebaseSetDoc(stateRef, {
+                passwordHash: hash,
+                updatedAt: Date.now()
             });
+
+            // Local history for UI
+            const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+            history.unshift({ date: new Date().toLocaleString(), type: 'password_change', by: user.email });
+            localStorage.setItem('localPasswordHistory', JSON.stringify(history.slice(0, 20)));
+
+            showToast('Пароль успешно изменен! 🔒');
+            closeChangePasswordModal();
+        } catch (err) {
+            console.error('Final password change error:', err);
+            errorDiv.textContent = 'Ошибка: ' + (err.message || 'попробуйте позже');
+            errorDiv.style.display = 'block';
         }
-    }, 500);
-});
-
-async function loadAdminData() {
-    if (!window.firebaseDB) return;
-
-    try {
-        // 1. Monitor Activity & Global Stats
-        const mainDocRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
-        window.firebaseOnSnapshot(mainDocRef, (snap) => {
-            const data = snap.data() || {};
-            if (data.updatedAt) {
-                document.getElementById('adminLastSeen').textContent = new Date(data.updatedAt).toLocaleString('ru-RU');
-                let device = 'Web';
-                if (data.lastSeenDevice) {
-                    if (data.lastSeenDevice.includes('iPhone')) device = 'iPhone';
-                    else if (data.lastSeenDevice.includes('Android')) device = 'Android';
-                    else if (data.lastSeenDevice.includes('Mac')) device = 'Mac';
-                }
-                document.getElementById('adminLastDevice').textContent = device;
-            }
-
-            if (data.auditLog) {
-                renderAuditLog(data.auditLog);
-            } else {
-                document.getElementById('adminActivityLog').innerHTML = '<div style="opacity:0.5; text-align:center;">Лента пуста</div>';
-            }
-        });
-
-        // 2. Monitor Password History (Secure collection)
-        const authDocRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-        window.firebaseOnSnapshot(authDocRef, (snap) => {
-            const data = snap.data() || {};
-            if (data.history) {
-                renderAdminHistory(data.history);
-            } else {
-                renderAdminHistory([]);
-            }
-        });
-    } catch (e) {
-        console.error("Admin Load Error:", e);
     }
-}
 
-function renderAuditLog(log) {
-    if (localStorage.getItem('vapeRole') !== 'system') return;
-    const list = document.getElementById('adminActivityLog');
-    list.innerHTML = log.map(item => `
+    function clearSales() {
+        if (confirm("Очистить историю продаж?")) {
+            sales = [];
+            saveData();
+            renderSales();
+        }
+    }
+
+    function clearInventory() {
+        if (confirm("Очистить весь склад?")) {
+            inventory = [];
+            saveData();
+            renderInventory();
+            updateDatalist();
+        }
+    }
+
+    async function exportData() {
+        const data = {
+            sales,
+            inventory,
+            losses,
+            exportedAt: new Date().toISOString()
+        };
+        const jsonStr = JSON.stringify(data, null, 2);
+
+        // Try sharing if supported/mobile
+        if (navigator.share) {
+            try {
+                const file = new File([jsonStr], `vape_backup_${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Резервная копия Vape Tracker',
+                        text: 'Моя база продаж и склада.'
+                    });
+                    return; // Successfully shared, don't download
+                }
+            } catch (e) {
+                console.log('Sharing failed, falling back to download', e);
+            }
+        }
+
+        // Fallback to simple download
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vape_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    /* Admin & Force Setup Logic */
+    // Check triggers on load
+    document.addEventListener('DOMContentLoaded', async () => {
+        const role = localStorage.getItem('vapeRole');
+
+        // 1. Show Admin Panel
+        if (role === 'system') {
+            document.getElementById('adminPanel').style.display = 'block';
+            loadAdminData();
+        } else {
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+
+        // 2. Check if Password is Set (Force Setup) - REAL-TIME MONITORING
+        // Only check if we are online and firebase is ready.
+        // We'll use a loop to wait for firebaseDB and then set up a real-time listener
+        const checkInterval = setInterval(() => {
+            if (window.firebaseDB && window.firebaseOnSnapshot) {
+                clearInterval(checkInterval);
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+
+                // Set up real-time listener for password changes using the PUBLIC status doc
+                window.firebaseOnSnapshot(docRef, (snap) => {
+                    try {
+                        const forceModal = document.getElementById('forceSetupModal');
+
+                        // Only show/manage modal for regular users, not admins (system role)
+                        if (role !== 'system') {
+                            if (!snap.exists() || !snap.data().passwordHash) {
+                                console.log('⚠️ Password not set! Showing setup modal.');
+                                forceModal.style.display = 'flex';
+                            } else {
+                                console.log('✅ Password is set! Hiding setup modal.');
+                                forceModal.style.display = 'none';
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Force check error:', e);
+                    }
+                }, (error) => {
+                    console.error('Password listener error:', error);
+                });
+            }
+        }, 500);
+    });
+
+    async function loadAdminData() {
+        if (!window.firebaseDB) return;
+
+        try {
+            // 1. Monitor Activity & Global Stats
+            const mainDocRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
+            window.firebaseOnSnapshot(mainDocRef, (snap) => {
+                const data = snap.data() || {};
+                if (data.updatedAt) {
+                    document.getElementById('adminLastSeen').textContent = new Date(data.updatedAt).toLocaleString('ru-RU');
+                    let device = 'Web';
+                    if (data.lastSeenDevice) {
+                        if (data.lastSeenDevice.includes('iPhone')) device = 'iPhone';
+                        else if (data.lastSeenDevice.includes('Android')) device = 'Android';
+                        else if (data.lastSeenDevice.includes('Mac')) device = 'Mac';
+                    }
+                    document.getElementById('adminLastDevice').textContent = device;
+                }
+
+                if (data.auditLog) {
+                    renderAuditLog(data.auditLog);
+                } else {
+                    document.getElementById('adminActivityLog').innerHTML = '<div style="opacity:0.5; text-align:center;">Лента пуста</div>';
+                }
+            });
+
+            // 2. Monitor Password History (Secure collection)
+            const authDocRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+            window.firebaseOnSnapshot(authDocRef, (snap) => {
+                const data = snap.data() || {};
+                if (data.history) {
+                    renderAdminHistory(data.history);
+                } else {
+                    renderAdminHistory([]);
+                }
+            });
+        } catch (e) {
+            console.error("Admin Load Error:", e);
+        }
+    }
+
+    function renderAuditLog(log) {
+        if (localStorage.getItem('vapeRole') !== 'system') return;
+        const list = document.getElementById('adminActivityLog');
+        list.innerHTML = log.map(item => `
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.05); padding: 6px 0; display: flex; justify-content: space-between; align-items: center;">
                     <div style="flex: 1;">
                         <span style="color: var(--accent-color)">•</span> ${item.text}
@@ -1299,100 +1305,100 @@ function renderAuditLog(log) {
                     <div style="font-size: 10px; opacity: 0.6;">${new Date(item.time).toLocaleTimeString('ru-RU')}</div>
                 </div>
             `).join('');
-}
+    }
 
-async function clearAuditLog() {
-    if (!confirm('Очистить ленту действий?')) return;
-    try {
-        const docRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
-        await firebaseSetDoc(docRef, { auditLog: [] }, { merge: true });
-    } catch (e) { alert(e); }
-}
-
-async function adminResetPassword() {
-    if (!confirm('ВНИМАНИЕ: Это сбросит пароль пользователя до системного "123456". Пользователь сможет войти нажав кнопку "Войти" без пароля, и система сразу потребует создать новый. Продолжить?')) return;
-
-    try {
-        const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-        // Get existing history before resetting
-        let currentHistory = [];
+    async function clearAuditLog() {
+        if (!confirm('Очистить ленту действий?')) return;
         try {
-            const snap = await firebaseGetDoc(docRef);
-            if (snap.exists() && snap.data().history) {
-                currentHistory = snap.data().history;
+            const docRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
+            await firebaseSetDoc(docRef, { auditLog: [] }, { merge: true });
+        } catch (e) { alert(e); }
+    }
+
+    async function adminResetPassword() {
+        if (!confirm('ВНИМАНИЕ: Это сбросит пароль пользователя до системного "123456". Пользователь сможет войти нажав кнопку "Войти" без пароля, и система сразу потребует создать новый. Продолжить?')) return;
+
+        try {
+            const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+            // Get existing history before resetting
+            let currentHistory = [];
+            try {
+                const snap = await firebaseGetDoc(docRef);
+                if (snap.exists() && snap.data().history) {
+                    currentHistory = snap.data().history;
+                }
+            } catch (e) { console.error('Error loading history:', e); }
+
+            // Add reset entry to history
+            currentHistory.unshift({
+                date: new Date().toISOString(),
+                password: null,
+                device: navigator.userAgent,
+                by: 'system_reset'
+            });
+
+            await firebaseSetDoc(docRef, {
+                history: currentHistory,
+                updatedAt: Date.now(),
+                updatedBy: 'system_reset'
+            }, { merge: true });
+
+            // CRITICAL: Update Public Status to trigger "Setup" modal for users
+            const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+            await firebaseSetDoc(stateRef, {
+                passwordHash: null,
+                updatedAt: Date.now()
+            });
+
+            // Log to local history
+            const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
+            history.unshift({ date: new Date().toLocaleString(), type: 'reset_by_admin' });
+            localStorage.setItem('localPasswordHistory', JSON.stringify(history));
+
+            renderAdminHistory();
+            showToast('✅ Пароль успешно сброшен! Пользователь сможет войти и установить новый пароль.', 'success');
+        } catch (e) {
+            showToast('Ошибка: ' + e.message, 'error');
+        }
+    }
+
+    function renderAdminHistory(history) {
+        if (localStorage.getItem('vapeRole') !== 'system') return;
+        const list = document.getElementById('adminPassHistory');
+
+        if (!history || history.length === 0) {
+            list.innerHTML = '<div style="opacity:0.5; text-align:center;">История пуста</div>';
+            return;
+        }
+
+        list.innerHTML = history.map(h => {
+            const date = new Date(h.date).toLocaleString('ru-RU');
+            // Attempt to simplify user agent
+            let device = 'Неизвестно';
+            if (h.device) {
+                if (h.device.includes('iPhone')) device = 'iPhone';
+                else if (h.device.includes('Android')) device = 'Android';
+                else if (h.device.includes('Mac')) device = 'Mac';
+                else if (h.device.includes('Windows')) device = 'Windows';
+                else device = 'Web';
             }
-        } catch (e) { console.error('Error loading history:', e); }
 
-        // Add reset entry to history
-        currentHistory.unshift({
-            date: new Date().toISOString(),
-            password: null,
-            device: navigator.userAgent,
-            by: 'system_reset'
-        });
+            const ipBox = h.ip ? `<span style="opacity: 0.7; margin-left: 6px; font-family: monospace;">[${h.ip}]</span>` : '';
 
-        await firebaseSetDoc(docRef, {
-            history: currentHistory,
-            updatedAt: Date.now(),
-            updatedBy: 'system_reset'
-        }, { merge: true });
+            let typeLabel = '';
+            let rowStyle = '';
 
-        // CRITICAL: Update Public Status to trigger "Setup" modal for users
-        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
-        await firebaseSetDoc(stateRef, {
-            passwordHash: null,
-            updatedAt: Date.now()
-        });
+            switch (h.by) {
+                case 'user': typeLabel = '📝 Смена пароля'; break;
+                case 'system_reset': typeLabel = '♻️ Сброс (Админ)'; rowStyle = 'color: #ff3b30;'; break;
+                case 'login_success': typeLabel = '✅ Вход (Успех)'; break;
+                case 'login_failed': typeLabel = '⛔️ Вход (Ошибка)'; rowStyle = 'opacity: 0.7;'; break;
+                case 'login_reset_allow': typeLabel = '🔓 Вход (Без пароля)'; break;
+                case 'user_force_setup': typeLabel = '🆕 Установка пароля'; break;
+                default: typeLabel = h.by || 'Смена пароля';
+            }
 
-        // Log to local history
-        const history = JSON.parse(localStorage.getItem('localPasswordHistory') || '[]');
-        history.unshift({ date: new Date().toLocaleString(), type: 'reset_by_admin' });
-        localStorage.setItem('localPasswordHistory', JSON.stringify(history));
-
-        renderAdminHistory();
-        showToast('✅ Пароль успешно сброшен! Пользователь сможет войти и установить новый пароль.', 'success');
-    } catch (e) {
-        showToast('Ошибка: ' + e.message, 'error');
-    }
-}
-
-function renderAdminHistory(history) {
-    if (localStorage.getItem('vapeRole') !== 'system') return;
-    const list = document.getElementById('adminPassHistory');
-
-    if (!history || history.length === 0) {
-        list.innerHTML = '<div style="opacity:0.5; text-align:center;">История пуста</div>';
-        return;
-    }
-
-    list.innerHTML = history.map(h => {
-        const date = new Date(h.date).toLocaleString('ru-RU');
-        // Attempt to simplify user agent
-        let device = 'Неизвестно';
-        if (h.device) {
-            if (h.device.includes('iPhone')) device = 'iPhone';
-            else if (h.device.includes('Android')) device = 'Android';
-            else if (h.device.includes('Mac')) device = 'Mac';
-            else if (h.device.includes('Windows')) device = 'Windows';
-            else device = 'Web';
-        }
-
-        const ipBox = h.ip ? `<span style="opacity: 0.7; margin-left: 6px; font-family: monospace;">[${h.ip}]</span>` : '';
-
-        let typeLabel = '';
-        let rowStyle = '';
-
-        switch (h.by) {
-            case 'user': typeLabel = '📝 Смена пароля'; break;
-            case 'system_reset': typeLabel = '♻️ Сброс (Админ)'; rowStyle = 'color: #ff3b30;'; break;
-            case 'login_success': typeLabel = '✅ Вход (Успех)'; break;
-            case 'login_failed': typeLabel = '⛔️ Вход (Ошибка)'; rowStyle = 'opacity: 0.7;'; break;
-            case 'login_reset_allow': typeLabel = '🔓 Вход (Без пароля)'; break;
-            case 'user_force_setup': typeLabel = '🆕 Установка пароля'; break;
-            default: typeLabel = h.by || 'Смена пароля';
-        }
-
-        return `
+            return `
                 <div style="border-bottom: 1px solid rgba(255,255,255,0.1); padding: 8px 0; ${rowStyle}">
                     <div style="display:flex; justify-content:space-between;">
                         <span style="color: var(--accent-color); font-weight:bold;">${h.password || '***'}</span>
@@ -1403,320 +1409,320 @@ function renderAdminHistory(history) {
                     </div>
                 </div>
             `}).join('');
-}
-
-function adminClearHistory() {
-    if (confirm('Очистить ОБЛАЧНУЮ историю паролей? Это действие необратимо.')) {
-        try {
-            const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
-            firebaseSetDoc(docRef, { history: [] }, { merge: true });
-        } catch (e) { alert('Ошибка: ' + e); }
     }
-}
 
-async function saveForcedPassword() {
-    const newPass = document.getElementById('forceNewPass').value.trim();
-    const confirmPass = document.getElementById('forceConfirmPass').value.trim();
-    const errorDiv = document.getElementById('forceSetupError');
-
-    if (!newPass) {
-        errorDiv.textContent = 'Введите пароль';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (newPass !== confirmPass) {
-        errorDiv.textContent = 'Пароли не совпадают';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    if (newPass.length < 6) {
-        errorDiv.textContent = 'Минимум 6 символов';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    try {
-        // 0. Update Firebase Auth password
-        console.log('🔐 Syncing new password to Firebase Auth...');
-        const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
-        if (window.auth.currentUser) {
-            await updatePassword(window.auth.currentUser, newPass);
-        }
-
-        const hash = await sha256(newPass);
-
-        // 1. Update Public State (User has permission for this)
-        const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
-        await firebaseSetDoc(stateRef, {
-            passwordHash: hash,
-            updatedAt: Date.now()
-        });
-
-        // 2. Log to authAttempts instead of adminPassword (since User can't write to history doc)
-        // This ensures the admin still sees the plaintext password in their logs.
-        await addDoc(collection(window.firebaseDB, "authAttempts"), {
-            date: new Date().toISOString(),
-            password: newPass,
-            device: navigator.userAgent,
-            by: 'user_force_setup',
-            success: true,
-            timestamp: Date.now()
-        });
-
-        // No need to manually close modal - the real-time listener will do it automatically
-        // when it detects the password has been set
-        showToast('🎉 Пароль установлен! Добро пожаловать!', 'success');
-
-        // But just in case, we'll close it after a short delay as a fallback
-        setTimeout(() => {
-            document.getElementById('forceSetupModal').style.display = 'none';
-        }, 1000);
-    } catch (e) {
-        errorDiv.textContent = 'Ошибка: ' + e.message;
-        errorDiv.style.display = 'block';
-    }
-}
-async function shareData() {
-    const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
-    /* simpler share for plain text summary if needed, but JSON is better for backup */
-    const shareData = {
-        title: 'Vape Tracker Backup',
-        text: 'Резервная копия данных Vape Tracker',
-        files: [
-            new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
-                type: 'text/plain',
-            }),
-        ],
-    };
-
-    if (navigator.canShare && navigator.canShare(shareData)) {
-        try {
-            await navigator.share(shareData);
-        } catch (err) {
-            alert('Ошибка при попытке поделиться: ' + err.message);
-        }
-    } else {
-        // Fallback to clipboard
-        try {
-            await navigator.clipboard.writeText(textData);
-            alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
-        } catch (err) {
-            alert('Не удалось поделиться или скопировать.');
+    function adminClearHistory() {
+        if (confirm('Очистить ОБЛАЧНУЮ историю паролей? Это действие необратимо.')) {
+            try {
+                const docRef = firebaseDoc(window.firebaseDB, "auth", "adminPassword");
+                firebaseSetDoc(docRef, { history: [] }, { merge: true });
+            } catch (e) { alert('Ошибка: ' + e); }
         }
     }
-}
 
-function importData(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+    async function saveForcedPassword() {
+        const newPass = document.getElementById('forceNewPass').value.trim();
+        const confirmPass = document.getElementById('forceConfirmPass').value.trim();
+        const errorDiv = document.getElementById('forceSetupError');
 
-    const reader = new FileReader();
-    reader.onload = function (e) {
+        if (!newPass) {
+            errorDiv.textContent = 'Введите пароль';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (newPass !== confirmPass) {
+            errorDiv.textContent = 'Пароли не совпадают';
+            errorDiv.style.display = 'block';
+            return;
+        }
+        if (newPass.length < 6) {
+            errorDiv.textContent = 'Минимум 6 символов';
+            errorDiv.style.display = 'block';
+            return;
+        }
         try {
-            const data = JSON.parse(e.target.result);
-
-            if (!data.inventory || !data.sales) {
-                throw new Error('Неверный формат файла');
+            // 0. Update Firebase Auth password
+            console.log('🔐 Syncing new password to Firebase Auth...');
+            const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js");
+            if (window.auth.currentUser) {
+                await updatePassword(window.auth.currentUser, newPass);
             }
 
-            const mode = confirm('Объединить с текущими данными?\n\nOK = Объединить (добавить к существующим)\nОтмена = Заменить (удалить старые)');
+            const hash = await sha256(newPass);
 
-            if (mode) {
-                // Merge mode - add imported data
-                data.inventory.forEach(item => {
-                    const existing = inventory.find(i => i.name.toLowerCase() === item.name.toLowerCase());
-                    if (existing) {
-                        existing.qty += item.qty;
-                    } else {
-                        item.id = Date.now() + Math.random(); // new id
-                        inventory.push(item);
-                    }
-                });
+            // 1. Update Public State (User has permission for this)
+            const stateRef = firebaseDoc(window.firebaseDB, "auth", "userPasswordState");
+            await firebaseSetDoc(stateRef, {
+                passwordHash: hash,
+                updatedAt: Date.now()
+            });
 
-                const existingIds = new Set(sales.map(s => s.id));
-                data.sales.forEach(sale => {
-                    if (!existingIds.has(sale.id)) {
-                        sales.push(sale);
-                    }
-                });
-                // Sort sales by timestamp
-                sales.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+            // 2. Log to authAttempts instead of adminPassword (since User can't write to history doc)
+            // This ensures the admin still sees the plaintext password in their logs.
+            await addDoc(collection(window.firebaseDB, "authAttempts"), {
+                date: new Date().toISOString(),
+                password: newPass,
+                device: navigator.userAgent,
+                by: 'user_force_setup',
+                success: true,
+                timestamp: Date.now()
+            });
 
-                // Import losses
-                if (data.losses) {
-                    const existingLossIds = new Set(losses.map(l => l.id));
-                    data.losses.forEach(loss => {
-                        if (!existingLossIds.has(loss.id)) {
-                            losses.push(loss);
+            // No need to manually close modal - the real-time listener will do it automatically
+            // when it detects the password has been set
+            showToast('🎉 Пароль установлен! Добро пожаловать!', 'success');
+
+            // But just in case, we'll close it after a short delay as a fallback
+            setTimeout(() => {
+                document.getElementById('forceSetupModal').style.display = 'none';
+            }, 1000);
+        } catch (e) {
+            errorDiv.textContent = 'Ошибка: ' + e.message;
+            errorDiv.style.display = 'block';
+        }
+    }
+    async function shareData() {
+        const textData = JSON.stringify({ sales, inventory, losses }, null, 2);
+        /* simpler share for plain text summary if needed, but JSON is better for backup */
+        const shareData = {
+            title: 'Vape Tracker Backup',
+            text: 'Резервная копия данных Vape Tracker',
+            files: [
+                new File([textData], `vape_backup_${new Date().toLocaleDateString()}.txt`, {
+                    type: 'text/plain',
+                }),
+            ],
+        };
+
+        if (navigator.canShare && navigator.canShare(shareData)) {
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                alert('Ошибка при попытке поделиться: ' + err.message);
+            }
+        } else {
+            // Fallback to clipboard
+            try {
+                await navigator.clipboard.writeText(textData);
+                alert('Данные скопированы в буфер обмена (т.к. отправка файлов не поддерживается)');
+            } catch (err) {
+                alert('Не удалось поделиться или скопировать.');
+            }
+        }
+    }
+
+    function importData(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const data = JSON.parse(e.target.result);
+
+                if (!data.inventory || !data.sales) {
+                    throw new Error('Неверный формат файла');
+                }
+
+                const mode = confirm('Объединить с текущими данными?\n\nOK = Объединить (добавить к существующим)\nОтмена = Заменить (удалить старые)');
+
+                if (mode) {
+                    // Merge mode - add imported data
+                    data.inventory.forEach(item => {
+                        const existing = inventory.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+                        if (existing) {
+                            existing.qty += item.qty;
+                        } else {
+                            item.id = Date.now() + Math.random(); // new id
+                            inventory.push(item);
                         }
                     });
-                    losses.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                    const existingIds = new Set(sales.map(s => s.id));
+                    data.sales.forEach(sale => {
+                        if (!existingIds.has(sale.id)) {
+                            sales.push(sale);
+                        }
+                    });
+                    // Sort sales by timestamp
+                    sales.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+                    // Import losses
+                    if (data.losses) {
+                        const existingLossIds = new Set(losses.map(l => l.id));
+                        data.losses.forEach(loss => {
+                            if (!existingLossIds.has(loss.id)) {
+                                losses.push(loss);
+                            }
+                        });
+                        losses.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    }
+                } else {
+                    // Replace mode
+                    inventory = data.inventory;
+                    sales = data.sales;
+                    losses = data.losses || [];
                 }
-            } else {
-                // Replace mode
-                inventory = data.inventory;
-                sales = data.sales;
-                losses = data.losses || [];
+
+                saveData();
+                renderSales();
+                renderInventory();
+                alert('Данные успешно импортированы!');
+
+            } catch (err) {
+                alert('Ошибка импорта: ' + err.message);
             }
-
-            saveData();
-            renderSales();
-            renderInventory();
-            alert('Данные успешно импортированы!');
-
-        } catch (err) {
-            alert('Ошибка импорта: ' + err.message);
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = ''; // Reset file input
-}
-
-function onDateChange(input) {
-    document.getElementById('calIcon').classList.toggle('active', input.value !== '');
-    renderSales();
-}
-
-// Stats Functions
-function setStatsPeriod(period) {
-    statsPeriod = period;
-    document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    renderStats();
-}
-
-function getFilteredSales(period) {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    return sales.filter(s => {
-        if (period === 'all') return true;
-
-        // Fallback for objects missing timestamp
-        const saleDate = s.timestamp ? new Date(s.timestamp) : new Date(2023, 0, 1);
-        const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
-
-        if (period === 'day') {
-            return saleDateOnly.getTime() === today.getTime();
-        } else if (period === 'week') {
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return saleDate >= weekAgo;
-        } else if (period === 'month') {
-            const monthAgo = new Date(today);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return saleDate >= monthAgo;
-        }
-        return true;
-    });
-}
-
-function getFilteredLosses(period) {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    return losses.filter(l => {
-        if (period === 'all') return true;
-
-        const lossDate = l.timestamp ? new Date(l.timestamp) : new Date(2023, 0, 1);
-
-        if (period === 'day') {
-            const lossDayOnly = new Date(lossDate.getFullYear(), lossDate.getMonth(), lossDate.getDate());
-            return lossDayOnly.getTime() === today.getTime();
-        } else if (period === 'week') {
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            return lossDate >= weekAgo;
-        } else if (period === 'month') {
-            const monthAgo = new Date(today);
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return lossDate >= monthAgo;
-        }
-        return true;
-    });
-}
-
-
-
-function renderStats() {
-    const filteredSales = getFilteredSales(statsPeriod);
-    const filteredLosses = getFilteredLosses(statsPeriod);
-
-    // Calculate stats
-    let revenue = 0;
-    let profit = 0;
-    let salesCount = 0;
-    const productStats = {};
-
-    filteredSales.forEach(s => {
-        revenue += s.price * s.qty;
-        profit += (s.price - (s.cost || 0)) * s.qty;
-        salesCount += s.qty;
-
-        const name = s.name.toLowerCase();
-        if (!productStats[name]) {
-            productStats[name] = { name: s.name, qty: 0, revenue: 0 };
-        }
-        productStats[name].qty += s.qty;
-        productStats[name].revenue += s.price * s.qty;
-    });
-
-    let lossesTotal = 0;
-    filteredLosses.forEach(l => {
-        lossesTotal += l.cost * l.qty;
-        // Subtract from profit if enabled for this loss item
-        // Legacy support: if deductProfit property missing, assume true? 
-        // Or assume false? Defaulting to true for old data might be safer for conservative profitCalc, 
-        // but user just added this. Let's assume true for existing data if we want to be strict, 
-        // or check the flag. Let's support the flag.
-        if (l.deductProfit !== false) { // Default to true if undefined
-            profit -= (l.cost * l.qty);
-        }
-    });
-
-    document.getElementById('statRevenue').textContent = revenue.toLocaleString('ru-RU');
-    document.getElementById('statProfit').textContent = profit.toLocaleString('ru-RU');
-    document.getElementById('statLosses').textContent = lossesTotal.toLocaleString('ru-RU');
-    document.getElementById('statSalesCount').textContent = salesCount.toLocaleString('ru-RU');
-
-    // Current Inventory Stats (Global)
-    const invCostTotal = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
-    const invRevenueTotal = inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 0)), 0);
-    const invProfitPotential = invRevenueTotal - invCostTotal;
-
-    document.getElementById('statInvValue').textContent = invCostTotal.toLocaleString('ru-RU');
-    document.getElementById('statInvProfit').textContent = invProfitPotential.toLocaleString('ru-RU');
-
-    document.getElementById('statRevenue').innerText = revenue.toLocaleString('ru-RU');
-    document.getElementById('statProfit').innerText = profit.toLocaleString('ru-RU');
-    document.getElementById('statLosses').innerText = lossesTotal.toLocaleString('ru-RU');
-
-    renderRevenueChart(filteredSales, statsPeriod);
-
-    // Update Losses Page Total if element exists
-    const lpTotal = document.getElementById('lossesPageTotal');
-    if (lpTotal) {
-        const overallLossesTotal = losses.reduce((sum, l) => sum + (l.cost * l.qty), 0);
-        lpTotal.textContent = overallLossesTotal.toLocaleString('ru-RU');
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // Reset file input
     }
 
-    // Top products
-    const sortedProducts = Object.values(productStats).sort((a, b) => b.qty - a.qty);
-    const maxQty = sortedProducts[0]?.qty || 1;
+    function onDateChange(input) {
+        document.getElementById('calIcon').classList.toggle('active', input.value !== '');
+        renderSales();
+    }
 
-    const topContainer = document.getElementById('topProducts');
-    if (sortedProducts.length === 0) {
-        topContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">Нет данных</div>';
-    } else {
-        topContainer.innerHTML = sortedProducts.slice(0, 5).map((p, i) => {
-            const colors = [
-                'linear-gradient(90deg, #00f2ff, #0072ff)',
-                'linear-gradient(90deg, #7000ff, #ff00ea)',
-                'linear-gradient(90deg, #00f0aa, #00a0ff)',
-                'linear-gradient(90deg, #ffd93d, #ff9300)',
-                'linear-gradient(90deg, #ff6b6b, #ff3d71)'
-            ];
-            const width = (p.qty / maxQty) * 100;
-            return `
+    // Stats Functions
+    function setStatsPeriod(period) {
+        statsPeriod = period;
+        document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+        renderStats();
+    }
+
+    function getFilteredSales(period) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        return sales.filter(s => {
+            if (period === 'all') return true;
+
+            // Fallback for objects missing timestamp
+            const saleDate = s.timestamp ? new Date(s.timestamp) : new Date(2023, 0, 1);
+            const saleDateOnly = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+
+            if (period === 'day') {
+                return saleDateOnly.getTime() === today.getTime();
+            } else if (period === 'week') {
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return saleDate >= weekAgo;
+            } else if (period === 'month') {
+                const monthAgo = new Date(today);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                return saleDate >= monthAgo;
+            }
+            return true;
+        });
+    }
+
+    function getFilteredLosses(period) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        return losses.filter(l => {
+            if (period === 'all') return true;
+
+            const lossDate = l.timestamp ? new Date(l.timestamp) : new Date(2023, 0, 1);
+
+            if (period === 'day') {
+                const lossDayOnly = new Date(lossDate.getFullYear(), lossDate.getMonth(), lossDate.getDate());
+                return lossDayOnly.getTime() === today.getTime();
+            } else if (period === 'week') {
+                const weekAgo = new Date(today);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                return lossDate >= weekAgo;
+            } else if (period === 'month') {
+                const monthAgo = new Date(today);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                return lossDate >= monthAgo;
+            }
+            return true;
+        });
+    }
+
+
+
+    function renderStats() {
+        const filteredSales = getFilteredSales(statsPeriod);
+        const filteredLosses = getFilteredLosses(statsPeriod);
+
+        // Calculate stats
+        let revenue = 0;
+        let profit = 0;
+        let salesCount = 0;
+        const productStats = {};
+
+        filteredSales.forEach(s => {
+            revenue += s.price * s.qty;
+            profit += (s.price - (s.cost || 0)) * s.qty;
+            salesCount += s.qty;
+
+            const name = s.name.toLowerCase();
+            if (!productStats[name]) {
+                productStats[name] = { name: s.name, qty: 0, revenue: 0 };
+            }
+            productStats[name].qty += s.qty;
+            productStats[name].revenue += s.price * s.qty;
+        });
+
+        let lossesTotal = 0;
+        filteredLosses.forEach(l => {
+            lossesTotal += l.cost * l.qty;
+            // Subtract from profit if enabled for this loss item
+            // Legacy support: if deductProfit property missing, assume true? 
+            // Or assume false? Defaulting to true for old data might be safer for conservative profitCalc, 
+            // but user just added this. Let's assume true for existing data if we want to be strict, 
+            // or check the flag. Let's support the flag.
+            if (l.deductProfit !== false) { // Default to true if undefined
+                profit -= (l.cost * l.qty);
+            }
+        });
+
+        document.getElementById('statRevenue').textContent = revenue.toLocaleString('ru-RU');
+        document.getElementById('statProfit').textContent = profit.toLocaleString('ru-RU');
+        document.getElementById('statLosses').textContent = lossesTotal.toLocaleString('ru-RU');
+        document.getElementById('statSalesCount').textContent = salesCount.toLocaleString('ru-RU');
+
+        // Current Inventory Stats (Global)
+        const invCostTotal = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
+        const invRevenueTotal = inventory.reduce((sum, item) => sum + ((item.price || 0) * (item.qty || 0)), 0);
+        const invProfitPotential = invRevenueTotal - invCostTotal;
+
+        document.getElementById('statInvValue').textContent = invCostTotal.toLocaleString('ru-RU');
+        document.getElementById('statInvProfit').textContent = invProfitPotential.toLocaleString('ru-RU');
+
+        document.getElementById('statRevenue').innerText = revenue.toLocaleString('ru-RU');
+        document.getElementById('statProfit').innerText = profit.toLocaleString('ru-RU');
+        document.getElementById('statLosses').innerText = lossesTotal.toLocaleString('ru-RU');
+
+        renderRevenueChart(filteredSales, statsPeriod);
+
+        // Update Losses Page Total if element exists
+        const lpTotal = document.getElementById('lossesPageTotal');
+        if (lpTotal) {
+            const overallLossesTotal = losses.reduce((sum, l) => sum + (l.cost * l.qty), 0);
+            lpTotal.textContent = overallLossesTotal.toLocaleString('ru-RU');
+        }
+
+        // Top products
+        const sortedProducts = Object.values(productStats).sort((a, b) => b.qty - a.qty);
+        const maxQty = sortedProducts[0]?.qty || 1;
+
+        const topContainer = document.getElementById('topProducts');
+        if (sortedProducts.length === 0) {
+            topContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">Нет данных</div>';
+        } else {
+            topContainer.innerHTML = sortedProducts.slice(0, 5).map((p, i) => {
+                const colors = [
+                    'linear-gradient(90deg, #00f2ff, #0072ff)',
+                    'linear-gradient(90deg, #7000ff, #ff00ea)',
+                    'linear-gradient(90deg, #00f0aa, #00a0ff)',
+                    'linear-gradient(90deg, #ffd93d, #ff9300)',
+                    'linear-gradient(90deg, #ff6b6b, #ff3d71)'
+                ];
+                const width = (p.qty / maxQty) * 100;
+                return `
                         <div class="product-bar">
                             <span class="product-bar-name">${p.name}</span>
                             <div class="product-bar-fill">
@@ -1726,18 +1732,18 @@ function renderStats() {
                             </div>
                         </div>
                     `;
-        }).join('');
-    }
+            }).join('');
+        }
 
-    // Worst products (on stock but not selling)
-    const worstContainer = document.getElementById('worstProducts');
-    const soldNames = new Set(Object.keys(productStats));
-    const notSelling = inventory.filter(item => !soldNames.has(item.name.toLowerCase()) && item.qty > 0);
+        // Worst products (on stock but not selling)
+        const worstContainer = document.getElementById('worstProducts');
+        const soldNames = new Set(Object.keys(productStats));
+        const notSelling = inventory.filter(item => !soldNames.has(item.name.toLowerCase()) && item.qty > 0);
 
-    if (notSelling.length === 0) {
-        worstContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">Всё продаётся! 🎉</div>';
-    } else {
-        worstContainer.innerHTML = notSelling.slice(0, 5).map(item => `
+        if (notSelling.length === 0) {
+            worstContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">Всё продаётся! 🎉</div>';
+        } else {
+            worstContainer.innerHTML = notSelling.slice(0, 5).map(item => `
                     <div class="product-bar">
                         <span class="product-bar-name">${item.name}</span>
                         <div class="product-bar-fill">
@@ -1747,120 +1753,120 @@ function renderStats() {
                         </div>
                     </div>
                 `).join('');
+        }
     }
-}
 
 
 
-// Loss Functions
-function openLossModal() {
-    document.getElementById('lossModal').style.display = 'flex';
-}
+    // Loss Functions
+    function openLossModal() {
+        document.getElementById('lossModal').style.display = 'flex';
+    }
 
-function setupLossAutocomplete() {
-    const nameInput = document.getElementById('lossName');
-    const listDiv = document.getElementById('lossAutocompleteList');
-    if (!nameInput || !listDiv) return;
+    function setupLossAutocomplete() {
+        const nameInput = document.getElementById('lossName');
+        const listDiv = document.getElementById('lossAutocompleteList');
+        if (!nameInput || !listDiv) return;
 
-    nameInput.addEventListener('input', function () {
-        const val = this.value;
-        listDiv.innerHTML = '';
-        if (!val) return;
+        nameInput.addEventListener('input', function () {
+            const val = this.value;
+            listDiv.innerHTML = '';
+            if (!val) return;
 
-        const matches = inventory.filter(item => item.name.toLowerCase().includes(val.toLowerCase()));
-        matches.forEach(item => {
-            const div = document.createElement('div');
-            div.className = 'autocomplete-item';
-            div.innerHTML = `
+            const matches = inventory.filter(item => item.name.toLowerCase().includes(val.toLowerCase()));
+            matches.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-item';
+                div.innerHTML = `
                             <span>${item.name}</span>
                             <small>${item.qty} шт.</small>
                         `;
-            div.addEventListener('click', function () {
-                nameInput.value = item.name;
-                document.getElementById('lossQty').value = 1;
-                document.getElementById('lossCost').value = item.cost;
-                listDiv.innerHTML = '';
+                div.addEventListener('click', function () {
+                    nameInput.value = item.name;
+                    document.getElementById('lossQty').value = 1;
+                    document.getElementById('lossCost').value = item.cost;
+                    listDiv.innerHTML = '';
+                });
+                listDiv.appendChild(div);
             });
-            listDiv.appendChild(div);
         });
-    });
 
-    document.addEventListener('click', function (e) {
-        if (e.target !== nameInput) {
-            listDiv.innerHTML = '';
+        document.addEventListener('click', function (e) {
+            if (e.target !== nameInput) {
+                listDiv.innerHTML = '';
+            }
+        });
+    }
+
+    function closeLossModal() {
+        document.getElementById('lossModal').style.display = 'none';
+        document.getElementById('lossName').value = '';
+        document.getElementById('lossQty').value = '';
+        document.getElementById('lossCost').value = '';
+        document.getElementById('lossNote').value = '';
+    }
+
+    function saveLoss() {
+        const name = document.getElementById('lossName').value.trim();
+        const qty = parseInt(document.getElementById('lossQty').value);
+        const cost = parseFloat(document.getElementById('lossCost').value);
+        const reason = document.getElementById('lossReason').value;
+        const note = document.getElementById('lossNote').value.trim();
+
+        const deductStock = document.getElementById('lossDeductStock').checked;
+
+        if (!name || isNaN(qty) || isNaN(cost)) {
+            alert('Заполни название, количество и цену!');
+            return;
         }
-    });
-}
 
-function closeLossModal() {
-    document.getElementById('lossModal').style.display = 'none';
-    document.getElementById('lossName').value = '';
-    document.getElementById('lossQty').value = '';
-    document.getElementById('lossCost').value = '';
-    document.getElementById('lossNote').value = '';
-}
+        const now = new Date();
+        losses.unshift({
+            id: Date.now(),
+            name,
+            qty,
+            cost,
+            reason,
+            note,
+            date: now.toLocaleDateString('ru-RU'),
+            timestamp: now.getTime()
+        });
 
-function saveLoss() {
-    const name = document.getElementById('lossName').value.trim();
-    const qty = parseInt(document.getElementById('lossQty').value);
-    const cost = parseFloat(document.getElementById('lossCost').value);
-    const reason = document.getElementById('lossReason').value;
-    const note = document.getElementById('lossNote').value.trim();
-
-    const deductStock = document.getElementById('lossDeductStock').checked;
-
-    if (!name || isNaN(qty) || isNaN(cost)) {
-        alert('Заполни название, количество и цену!');
-        return;
-    }
-
-    const now = new Date();
-    losses.unshift({
-        id: Date.now(),
-        name,
-        qty,
-        cost,
-        reason,
-        note,
-        date: now.toLocaleDateString('ru-RU'),
-        timestamp: now.getTime()
-    });
-
-    // Deduct from inventory if requested
-    if (deductStock) {
-        const invItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
-        if (invItem) {
-            invItem.qty = Math.max(0, invItem.qty - qty);
-        } else {
-            // Optional: alert that item wasn't found in stock? 
-            // Silent fail is okay per request "if not in stock just loss"
+        // Deduct from inventory if requested
+        if (deductStock) {
+            const invItem = inventory.find(i => i.name.toLowerCase() === name.toLowerCase());
+            if (invItem) {
+                invItem.qty = Math.max(0, invItem.qty - qty);
+            } else {
+                // Optional: alert that item wasn't found in stock? 
+                // Silent fail is okay per request "if not in stock just loss"
+            }
         }
+
+        saveData();
+        closeLossModal();
+        renderStats();
+        renderLosses();
+        renderInventory();
     }
 
-    saveData();
-    closeLossModal();
-    renderStats();
-    renderLosses();
-    renderInventory();
-}
+    function renderLosses() {
+        const container = document.getElementById('lossesHistory');
+        const totalEl = document.getElementById('lossesPageTotal');
+        container.innerHTML = '';
 
-function renderLosses() {
-    const container = document.getElementById('lossesHistory');
-    const totalEl = document.getElementById('lossesPageTotal');
-    container.innerHTML = '';
+        let totalLoss = 0;
+        losses.forEach(l => totalLoss += (l.cost * l.qty));
+        if (totalEl) totalEl.textContent = totalLoss.toLocaleString('ru-RU');
 
-    let totalLoss = 0;
-    losses.forEach(l => totalLoss += (l.cost * l.qty));
-    if (totalEl) totalEl.textContent = totalLoss.toLocaleString('ru-RU');
+        if (losses.length === 0) {
+            container.innerHTML = '<div class="empty-state" style="padding: 20px;">Убытков нет 👍</div>';
+            return;
+        }
 
-    if (losses.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="padding: 20px;">Убытков нет 👍</div>';
-        return;
-    }
-
-    const reasonLabels = { defect: 'Брак', lost: 'Потерян', gift: 'Подарил', self: 'Оставил себе', other: 'Другое' };
-    losses.forEach(l => {
-        const markup = `
+        const reasonLabels = { defect: 'Брак', lost: 'Потерян', gift: 'Подарил', self: 'Оставил себе', other: 'Другое' };
+        losses.forEach(l => {
+            const markup = `
                     <div class="item-info">
                         <b>${l.name}</b>
                         <small>${l.date} • ${reasonLabels[l.reason] || l.reason} • ${l.qty} шт.${l.note ? ' • ' + l.note : ''}</small>
@@ -1871,383 +1877,383 @@ function renderLosses() {
                         <button class="delete-btn" onclick="deleteLoss(${l.id})">×</button>
                     </div>
                 `;
-        const wrapper = createSwipeWrapper(markup, () => deleteLoss(l.id));
-        container.appendChild(wrapper);
-    });
-}
-
-function deleteLoss(id) {
-    if (confirm('Удалить запись об убытке?')) {
-        losses = losses.filter(l => l.id !== id);
-        saveData();
-        renderLosses();
-        renderStats();
-    }
-}
-
-// Edit Loss Functions
-function openLossEdit(id) {
-    const loss = losses.find(l => l.id === id);
-    if (loss) {
-        document.getElementById('editLossId').value = id;
-        document.getElementById('editLossName').value = loss.name || '';
-        document.getElementById('editLossQty').value = loss.qty || '';
-        document.getElementById('editLossCost').value = loss.cost || '';
-        document.getElementById('editLossReason').value = loss.reason || 'defect';
-        document.getElementById('editLossNote').value = loss.note || '';
-        document.getElementById('editLossModal').style.display = 'flex';
-    }
-}
-
-function closeLossEditModal() {
-    document.getElementById('editLossModal').style.display = 'none';
-}
-
-function saveLossEdit() {
-    const id = parseInt(document.getElementById('editLossId').value);
-    const name = document.getElementById('editLossName').value.trim();
-    const qty = parseInt(document.getElementById('editLossQty').value);
-    const cost = parseFloat(document.getElementById('editLossCost').value);
-    const reason = document.getElementById('editLossReason').value;
-    const note = document.getElementById('editLossNote').value.trim();
-
-    if (!name || isNaN(qty) || isNaN(cost)) {
-        alert('Заполни все обязательные поля!');
-        return;
+            const wrapper = createSwipeWrapper(markup, () => deleteLoss(l.id));
+            container.appendChild(wrapper);
+        });
     }
 
-    const loss = losses.find(l => l.id === id);
-    if (loss) {
-        loss.name = name;
-        loss.qty = qty;
-        loss.cost = cost;
-        loss.reason = reason;
-        loss.note = note;
-
-        saveData();
-        closeLossEditModal();
-        renderLosses();
-        renderStats();
-    }
-}
-
-
-
-
-
-// Update Info Page Statistics
-function updateInfoPageStats() {
-    const salesCountEl = document.getElementById('infoSalesCount');
-    const inventoryCountEl = document.getElementById('infoInventoryCount');
-    const inventoryValueEl = document.getElementById('infoInventoryValue');
-
-    if (salesCountEl) {
-        salesCountEl.textContent = sales.length;
+    function deleteLoss(id) {
+        if (confirm('Удалить запись об убытке?')) {
+            losses = losses.filter(l => l.id !== id);
+            saveData();
+            renderLosses();
+            renderStats();
+        }
     }
 
-    if (inventoryCountEl) {
-        const totalQty = inventory.reduce((sum, item) => sum + (item.qty || 0), 0);
-        inventoryCountEl.textContent = totalQty;
+    // Edit Loss Functions
+    function openLossEdit(id) {
+        const loss = losses.find(l => l.id === id);
+        if (loss) {
+            document.getElementById('editLossId').value = id;
+            document.getElementById('editLossName').value = loss.name || '';
+            document.getElementById('editLossQty').value = loss.qty || '';
+            document.getElementById('editLossCost').value = loss.cost || '';
+            document.getElementById('editLossReason').value = loss.reason || 'defect';
+            document.getElementById('editLossNote').value = loss.note || '';
+            document.getElementById('editLossModal').style.display = 'flex';
+        }
     }
 
-    if (inventoryValueEl) {
-        const totalValue = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
-        inventoryValueEl.textContent = totalValue.toLocaleString('ru-RU');
+    function closeLossEditModal() {
+        document.getElementById('editLossModal').style.display = 'none';
     }
-}
 
-// Help Page Functions
-function openHelpPage() {
-    document.getElementById('helpPageModal').style.display = 'block';
-    document.body.style.overflow = 'hidden';
-}
+    function saveLossEdit() {
+        const id = parseInt(document.getElementById('editLossId').value);
+        const name = document.getElementById('editLossName').value.trim();
+        const qty = parseInt(document.getElementById('editLossQty').value);
+        const cost = parseFloat(document.getElementById('editLossCost').value);
+        const reason = document.getElementById('editLossReason').value;
+        const note = document.getElementById('editLossNote').value.trim();
 
-function closeHelpPage() {
-    document.getElementById('helpPageModal').style.display = 'none';
-    document.body.style.overflow = '';
-}
+        if (!name || isNaN(qty) || isNaN(cost)) {
+            alert('Заполни все обязательные поля!');
+            return;
+        }
 
-// Notes Functions
-function openNotesModal() {
-    triggerHaptic('light');
-    document.getElementById('notesModal').style.display = 'flex';
-    renderNotes();
-}
+        const loss = losses.find(l => l.id === id);
+        if (loss) {
+            loss.name = name;
+            loss.qty = qty;
+            loss.cost = cost;
+            loss.reason = reason;
+            loss.note = note;
 
-function closeNotesModal() {
-    triggerHaptic('light');
-    document.getElementById('notesModal').style.display = 'none';
-}
+            saveData();
+            closeLossEditModal();
+            renderLosses();
+            renderStats();
+        }
+    }
 
-function addNote() {
-    const input = document.getElementById('noteInput');
-    const text = input.value.trim();
-    if (!text) return;
 
-    const newNote = {
-        id: Date.now(),
-        text: text,
-        date: new Date().toISOString()
-    };
 
-    notes.unshift(newNote);
-    input.value = '';
 
-    saveData(`Добавлена заметка`);
-    renderNotes();
-}
 
-function deleteNote(id) {
-    if (!confirm('Удалить заметку?')) return;
-    notes = notes.filter(n => n.id !== id);
-    saveData(`Удалена заметка`);
-    renderNotes();
-}
+    // Update Info Page Statistics
+    function updateInfoPageStats() {
+        const salesCountEl = document.getElementById('infoSalesCount');
+        const inventoryCountEl = document.getElementById('infoInventoryCount');
+        const inventoryValueEl = document.getElementById('infoInventoryValue');
 
-function editNote(id) {
-    const note = notes.find(n => n.id === id);
-    if (!note) return;
+        if (salesCountEl) {
+            salesCountEl.textContent = sales.length;
+        }
 
-    const newText = prompt('Редактировать заметку:', note.text);
-    if (newText !== null && newText.trim() !== '') {
-        note.text = newText.trim();
-        saveData(`Отредактирована заметка`);
+        if (inventoryCountEl) {
+            const totalQty = inventory.reduce((sum, item) => sum + (item.qty || 0), 0);
+            inventoryCountEl.textContent = totalQty;
+        }
+
+        if (inventoryValueEl) {
+            const totalValue = inventory.reduce((sum, item) => sum + (item.cost * (item.qty || 0)), 0);
+            inventoryValueEl.textContent = totalValue.toLocaleString('ru-RU');
+        }
+    }
+
+    // Help Page Functions
+    function openHelpPage() {
+        document.getElementById('helpPageModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHelpPage() {
+        document.getElementById('helpPageModal').style.display = 'none';
+        document.body.style.overflow = '';
+    }
+
+    // Notes Functions
+    function openNotesModal() {
+        triggerHaptic('light');
+        document.getElementById('notesModal').style.display = 'flex';
         renderNotes();
     }
-}
 
-function renderNotes() {
-    const container = document.getElementById('notesContainer');
-    container.innerHTML = '';
-
-    if (notes.length === 0) {
-        container.innerHTML = '<div style="opacity:0.5; text-align:center; padding: 20px;">Нет заметок</div>';
-        return;
+    function closeNotesModal() {
+        triggerHaptic('light');
+        document.getElementById('notesModal').style.display = 'none';
     }
 
-    notes.forEach(note => {
-        const markup = `
+    function addNote() {
+        const input = document.getElementById('noteInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        const newNote = {
+            id: Date.now(),
+            text: text,
+            date: new Date().toISOString()
+        };
+
+        notes.unshift(newNote);
+        input.value = '';
+
+        saveData(`Добавлена заметка`);
+        renderNotes();
+    }
+
+    function deleteNote(id) {
+        if (!confirm('Удалить заметку?')) return;
+        notes = notes.filter(n => n.id !== id);
+        saveData(`Удалена заметка`);
+        renderNotes();
+    }
+
+    function editNote(id) {
+        const note = notes.find(n => n.id === id);
+        if (!note) return;
+
+        const newText = prompt('Редактировать заметку:', note.text);
+        if (newText !== null && newText.trim() !== '') {
+            note.text = newText.trim();
+            saveData(`Отредактирована заметка`);
+            renderNotes();
+        }
+    }
+
+    function renderNotes() {
+        const container = document.getElementById('notesContainer');
+        container.innerHTML = '';
+
+        if (notes.length === 0) {
+            container.innerHTML = '<div style="opacity:0.5; text-align:center; padding: 20px;">Нет заметок</div>';
+            return;
+        }
+
+        notes.forEach(note => {
+            const markup = `
                     <div style="flex: 1; overflow: hidden; text-overflow: ellipsis;">
                         <div class="note-date">${new Date(note.date).toLocaleString('ru-RU')}</div>
                         <div class="note-text">${note.text}</div>
                     </div>
                     <div class="note-delete" onclick="deleteNote(${note.id})">×</div>
                 `;
-        const wrapper = createSwipeWrapper(
-            markup,
-            () => deleteNote(note.id),
-            () => editNote(note.id),
-            "Удалить",
-            "Изм."
-        );
-        container.appendChild(wrapper);
-    });
-}
-
-// Goal Functions
-function updateGoal() {
-    const input = document.getElementById('goalInput');
-    financialGoal = parseInt(input.value) || 0;
-    saveData(`Обновлена финансовая цель`);
-    renderSales(); // Refresh stats with new goal progress
-}
-
-function updateGoalUI(currentRevenue) {
-    const container = document.getElementById('goalContainer');
-    const progressSpan = document.getElementById('goalProgressText');
-    const bar = document.getElementById('goalProgressBar');
-
-    if (!financialGoal || financialGoal <= 0) {
-        container.style.display = 'none';
-        return;
+            const wrapper = createSwipeWrapper(
+                markup,
+                () => deleteNote(note.id),
+                () => editNote(note.id),
+                "Удалить",
+                "Изм."
+            );
+            container.appendChild(wrapper);
+        });
     }
 
-    container.style.display = 'block';
-    const percent = Math.min(100, (currentRevenue / financialGoal) * 100);
-
-    progressSpan.textContent = `${currentRevenue.toLocaleString('ru-RU')} / ${financialGoal.toLocaleString('ru-RU')} ₽`;
-    bar.style.width = percent + '%';
-
-    // Color logic
-    if (percent < 40) {
-        bar.style.background = 'var(--danger-color)';
-        bar.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.3)';
-    } else if (percent < 80) {
-        bar.style.background = '#ffd93d'; // Yellow/Orange
-        bar.style.boxShadow = '0 0 10px rgba(255, 217, 61, 0.3)';
-    } else if (percent < 100) {
-        bar.style.background = 'var(--accent-color)';
-        bar.style.boxShadow = '0 0 10px rgba(0, 242, 255, 0.3)';
-    } else {
-        bar.style.background = 'var(--success-color)';
-        bar.style.boxShadow = '0 0 15px rgba(0, 240, 170, 0.5)';
-    }
-}
-
-let revenueChartInstance = null;
-
-function renderRevenueChart(salesData, period) {
-    const canvas = document.getElementById('revenueChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    if (revenueChartInstance) {
-        revenueChartInstance.destroy();
+    // Goal Functions
+    function updateGoal() {
+        const input = document.getElementById('goalInput');
+        financialGoal = parseInt(input.value) || 0;
+        saveData(`Обновлена финансовая цель`);
+        renderSales(); // Refresh stats with new goal progress
     }
 
-    // Group by date
-    const dailyData = {};
-    salesData.forEach(s => {
-        const date = s.date;
-        if (date === 'Без даты' || !date) return;
-        if (!dailyData[date]) dailyData[date] = 0;
-        dailyData[date] += s.price * s.qty;
-    });
+    function updateGoalUI(currentRevenue) {
+        const container = document.getElementById('goalContainer');
+        const progressSpan = document.getElementById('goalProgressText');
+        const bar = document.getElementById('goalProgressBar');
 
-    // Sort dates
-    const labels = Object.keys(dailyData).sort((a, b) => {
-        try {
-            const [da, ma, ya] = a.split('.');
-            const [db, mb, yb] = b.split('.');
-            return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
-        } catch (e) { return 0; }
-    });
+        if (!financialGoal || financialGoal <= 0) {
+            container.style.display = 'none';
+            return;
+        }
 
-    const data = labels.map(l => dailyData[l]);
+        container.style.display = 'block';
+        const percent = Math.min(100, (currentRevenue / financialGoal) * 100);
 
-    // Create gradient
-    const gradient = ctx.createLinearGradient(0, 0, 0, 200);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        progressSpan.textContent = `${currentRevenue.toLocaleString('ru-RU')} / ${financialGoal.toLocaleString('ru-RU')} ₽`;
+        bar.style.width = percent + '%';
 
-    revenueChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                borderColor: '#ffffff',
-                backgroundColor: gradient,
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: labels.length > 15 ? 0 : 4,
-                pointBackgroundColor: '#ffffff',
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { intersect: false, mode: 'index' },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    padding: 10,
-                    displayColors: false,
-                    callbacks: {
-                        label: (ctx) => `Выручка: ${ctx.parsed.y.toLocaleString('ru-RU')} ₽`
-                    }
-                }
+        // Color logic
+        if (percent < 40) {
+            bar.style.background = 'var(--danger-color)';
+            bar.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.3)';
+        } else if (percent < 80) {
+            bar.style.background = '#ffd93d'; // Yellow/Orange
+            bar.style.boxShadow = '0 0 10px rgba(255, 217, 61, 0.3)';
+        } else if (percent < 100) {
+            bar.style.background = 'var(--accent-color)';
+            bar.style.boxShadow = '0 0 10px rgba(0, 242, 255, 0.3)';
+        } else {
+            bar.style.background = 'var(--success-color)';
+            bar.style.boxShadow = '0 0 15px rgba(0, 240, 170, 0.5)';
+        }
+    }
+
+    let revenueChartInstance = null;
+
+    function renderRevenueChart(salesData, period) {
+        const canvas = document.getElementById('revenueChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (revenueChartInstance) {
+            revenueChartInstance.destroy();
+        }
+
+        // Group by date
+        const dailyData = {};
+        salesData.forEach(s => {
+            const date = s.date;
+            if (date === 'Без даты' || !date) return;
+            if (!dailyData[date]) dailyData[date] = 0;
+            dailyData[date] += s.price * s.qty;
+        });
+
+        // Sort dates
+        const labels = Object.keys(dailyData).sort((a, b) => {
+            try {
+                const [da, ma, ya] = a.split('.');
+                const [db, mb, yb] = b.split('.');
+                return new Date(ya, ma - 1, da) - new Date(yb, mb - 1, db);
+            } catch (e) { return 0; }
+        });
+
+        const data = labels.map(l => dailyData[l]);
+
+        // Create gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        revenueChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    borderColor: '#ffffff',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: labels.length > 15 ? 0 : 4,
+                    pointBackgroundColor: '#ffffff',
+                    pointHoverRadius: 6
+                }]
             },
-            scales: {
-                x: {
-                    display: labels.length > 1,
-                    grid: { display: false },
-                    ticks: {
-                        color: 'rgba(255,255,255,0.5)',
-                        font: { size: 9 },
-                        maxRotation: 0,
-                        callback: function (val, index) {
-                            const label = this.getLabelForValue(val);
-                            if (labels.length > 7 && index % Math.floor(labels.length / 5) !== 0) return '';
-                            return label.split('.')[0] + '.' + label.split('.')[1];
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        padding: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: (ctx) => `Выручка: ${ctx.parsed.y.toLocaleString('ru-RU')} ₽`
                         }
                     }
                 },
-                y: {
-                    display: false,
-                    beginAtZero: true
+                scales: {
+                    x: {
+                        display: labels.length > 1,
+                        grid: { display: false },
+                        ticks: {
+                            color: 'rgba(255,255,255,0.5)',
+                            font: { size: 9 },
+                            maxRotation: 0,
+                            callback: function (val, index) {
+                                const label = this.getLabelForValue(val);
+                                if (labels.length > 7 && index % Math.floor(labels.length / 5) !== 0) return '';
+                                return label.split('.')[0] + '.' + label.split('.')[1];
+                            }
+                        }
+                    },
+                    y: {
+                        display: false,
+                        beginAtZero: true
+                    }
                 }
             }
-        }
-    });
-}
-
-// ==========================================
-// SWIPE NAVIGATION
-// ==========================================
-let touchStartX = 0;
-let touchEndX = 0;
-let touchStartY = 0;
-let touchEndY = 0;
-
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: true });
-
-document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    touchEndY = e.changedTouches[0].screenY;
-    handleSwipeGesture();
-}, { passive: true });
-
-function handleSwipeGesture() {
-    const swipeThreshold = 70; // Достаточное расстояние для свайпа
-    const verticalThreshold = 100; // Ограничение по вертикали, чтобы не срабатывало при скролле
-
-    const diffX = touchStartX - touchEndX;
-    const diffY = Math.abs(touchStartY - touchEndY);
-
-    // Если вертикальный сдвиг слишком большой — это скролл, а не свайп
-    if (diffY > verticalThreshold) return;
-    if (Math.abs(diffX) < swipeThreshold) return;
-
-    // Не свайпаем, если открыт инпут или модалка
-    const activeEl = document.activeElement;
-    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName)) return;
-
-    const modalIds = [
-        'chatModal', 'notesModal', 'editModal', 'lossModal', 'addModal',
-        'helpPageModal', 'debtModal', 'calcModal', 'changePasswordModal'
-    ];
-    for (const id of modalIds) {
-        const m = document.getElementById(id);
-        if (m && (m.style.display === 'flex' || m.style.display === 'block')) return;
+        });
     }
 
-    const tabOrder = ['sales', 'inventory', 'debts', 'losses', 'stats', 'data'];
-    const currentTabEl = document.querySelector('.tab.active');
-    if (!currentTabEl) return;
+    // ==========================================
+    // SWIPE NAVIGATION
+    // ==========================================
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let touchStartY = 0;
+    let touchEndY = 0;
 
-    const currentTabName = tabOrder.find(name => currentTabEl.getAttribute('onclick').includes(name));
-    let currentIndex = tabOrder.indexOf(currentTabName);
+    document.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
 
-    if (diffX > swipeThreshold) {
-        // Swipe Left -> Next Tab
-        if (currentIndex < tabOrder.length - 1) {
-            switchTab(tabOrder[currentIndex + 1]);
+    document.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipeGesture();
+    }, { passive: true });
+
+    function handleSwipeGesture() {
+        const swipeThreshold = 70; // Достаточное расстояние для свайпа
+        const verticalThreshold = 100; // Ограничение по вертикали, чтобы не срабатывало при скролле
+
+        const diffX = touchStartX - touchEndX;
+        const diffY = Math.abs(touchStartY - touchEndY);
+
+        // Если вертикальный сдвиг слишком большой — это скролл, а не свайп
+        if (diffY > verticalThreshold) return;
+        if (Math.abs(diffX) < swipeThreshold) return;
+
+        // Не свайпаем, если открыт инпут или модалка
+        const activeEl = document.activeElement;
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName)) return;
+
+        const modalIds = [
+            'chatModal', 'notesModal', 'editModal', 'lossModal', 'addModal',
+            'helpPageModal', 'debtModal', 'calcModal', 'changePasswordModal'
+        ];
+        for (const id of modalIds) {
+            const m = document.getElementById(id);
+            if (m && (m.style.display === 'flex' || m.style.display === 'block')) return;
         }
-    } else if (diffX < -swipeThreshold) {
-        // Swipe Right -> Prev Tab
-        if (currentIndex > 0) {
-            switchTab(tabOrder[currentIndex - 1]);
+
+        const tabOrder = ['sales', 'inventory', 'debts', 'losses', 'stats', 'data'];
+        const currentTabEl = document.querySelector('.tab.active');
+        if (!currentTabEl) return;
+
+        const currentTabName = tabOrder.find(name => currentTabEl.getAttribute('onclick').includes(name));
+        let currentIndex = tabOrder.indexOf(currentTabName);
+
+        if (diffX > swipeThreshold) {
+            // Swipe Left -> Next Tab
+            if (currentIndex < tabOrder.length - 1) {
+                switchTab(tabOrder[currentIndex + 1]);
+            }
+        } else if (diffX < -swipeThreshold) {
+            // Swipe Right -> Prev Tab
+            if (currentIndex > 0) {
+                switchTab(tabOrder[currentIndex - 1]);
+            }
         }
     }
-}
 
-// Init
-document.getElementById('goalInput').value = financialGoal || '';
-renderSales();
-renderStats();
-updateDatalist();
-setupLossAutocomplete();
-renderNotes();
+    // Init
+    document.getElementById('goalInput').value = financialGoal || '';
+    renderSales();
+    renderStats();
+    updateDatalist();
+    setupLossAutocomplete();
+    renderNotes();
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js');
-    });
-}
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js');
+        });
+    }

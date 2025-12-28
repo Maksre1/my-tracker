@@ -197,11 +197,13 @@ async function sendChatMessage() {
             `;
 
     // 4. Подготовка данных для контекста
-    const invData = JSON.parse(localStorage.getItem('inventory') || '[]');
-    const salesData = JSON.parse(localStorage.getItem('sales') || '[]');
+    // Use global window variables ensuring we see the latest in-memory state
+    const invData = (window.inventory && window.inventory.length > 0) ? window.inventory : JSON.parse(localStorage.getItem('vapeInventory') || '[]');
+    const salesData = (window.sales && window.sales.length > 0) ? window.sales : JSON.parse(localStorage.getItem('vapeSales') || '[]');
 
     let inventoryList = "ПУСТО";
     if (invData.length > 0) {
+        // Limit context to prevent token overflow
         inventoryList = invData.map(i => `${i.name} (${i.qty}шт, ${i.price}₽)`).join(", ");
     }
 
