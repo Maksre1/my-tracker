@@ -857,28 +857,45 @@ async function saveData(lastAction = null) {
     localStorage.setItem('vapeLastUpdate', now);
 
     // Cloud save - only if authenticated
-    if (window.firebaseDB && window.firebaseAuth.currentUser) {
+    // Check if connected to cloud
+    const authUser = window.auth ? window.auth.currentUser : (window.firebaseAuth ? window.firebaseAuth.currentUser : null);
+
+    if (window.firebaseDB && authUser) {
         try {
             const docRef = firebaseDoc(window.firebaseDB, "tracker", "mainData");
-            const snap = await firebaseGetDoc(docRef);
-            let auditLog = [];
-            if (snap.exists() && snap.data().auditLog) {
-                auditLog = snap.data().auditLog;
-            }
 
+            // Get current audit log to append to it, rather than overwriting
+            // We optimized this read: only needed if we are adding an audit log entry
+            let auditLog = [];
             if (lastAction) {
+                try {
+                    const snap = await firebaseGetDoc(docRef);
+                    if (snap.exists() && snap.data().auditLog) {
+                        auditLog = snap.data().auditLog;
+                    }
+                } catch (e) { console.warn("Could not fetch old audit log", e); }
+
                 const device = navigator.userAgent.includes('iPhone') ? 'iPhone' :
                     navigator.userAgent.includes('Android') ? 'Android' : 'PC';
+
                 auditLog.unshift({
                     text: lastAction,
                     time: now,
-                    device: device
+                    device: device,
+                    user: authUser.email // Add who did it
                 });
-                // Keep only last 50 actions
                 if (auditLog.length > 50) auditLog = auditLog.slice(0, 50);
+            } else {
+                // If no action text (e.g. just raw save), preserve existing log if possible or just don't send 'auditLog' field
+                // To be safe and simple: if we don't have lastAction, we might overwrite auditLog with empty if we just send the rest.
+                // So we better fetch it or use merge correctly.
+                // With {merge:true}, if we omit auditLog in the payload, it stays. 
+                // But wait, below we send `auditLog: auditLog` which is [] if lastAction is null.
+                // This CLEARS the log if we just save data without action text.
+                // FIX: Only include auditLog in payload if we have an action.
             }
 
-            await firebaseSetDoc(docRef, {
+            const payload = {
                 sales: sales,
                 inventory: inventory,
                 losses: losses,
@@ -886,14 +903,22 @@ async function saveData(lastAction = null) {
                 notes: notes,
                 financialGoal: financialGoal,
                 updatedAt: now,
-                lastSyncBy: window.firebaseAuth.currentUser.email,
-                lastSeenDevice: navigator.userAgent,
-                auditLog: auditLog
-            }, { merge: true });
-            // showToast("Синхронизировано ☁️");
+                lastSyncBy: authUser.email,
+                lastSeenDevice: navigator.userAgent
+            };
+
+            if (lastAction) {
+                payload.auditLog = auditLog;
+            }
+
+            await firebaseSetDoc(docRef, payload, { merge: true });
+
+            // Only toast if it was a user action, not background save
+            // if (lastAction) showToast("Синхронизировано ☁️");
+
         } catch (e) {
             console.error("Firebase Save Error:", e);
-            showToast("Ошибка облака ⚠️", "error");
+            showToast("Ошибка сохранения в облако ⚠️", "error");
         }
     }
 }
