@@ -329,36 +329,46 @@
             const USER_EMAIL = 'user@vape.com';
 
             try {
+                // 1. Try Admin login
                 console.log('🔐 Trying Admin auth...');
-                try {
-                    const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
-                    console.log('✅ Admin login successful');
-                    await logLoginAttempt(password, 'firebase_system_success', true);
-                    completeLogin(dontRemember, 'system');
-                } catch (adminError) {
-                    if (adminError.code === 'auth/wrong-password' || adminError.code === 'auth/user-not-found') {
-                        console.log('🔐 Trying User auth...');
-                        const userCredential = await signInWithEmailAndPassword(auth, USER_EMAIL, password);
+                await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+                console.log('✅ Admin login successful');
+                await logLoginAttempt(password, 'firebase_system_success', true);
+                completeLogin(dontRemember, 'system');
+                return;
+            } catch (adminError) {
+                // If admin auth failed, check if it's a credential issue
+                if (adminError.code === 'auth/invalid-credential' || adminError.code === 'auth/wrong-password' || adminError.code === 'auth/user-not-found') {
+                    console.log('🔐 Admin auth failed, trying User auth...');
+                    try {
+                        // 2. Try User login
+                        await signInWithEmailAndPassword(auth, USER_EMAIL, password);
                         console.log('✅ User login successful');
                         await logLoginAttempt(password, 'firebase_user_success', true);
                         completeLogin(dontRemember, 'user');
-                    } else {
-                        throw adminError;
+                        return;
+                    } catch (userError) {
+                        // Both failed
+                        console.error('❌ User login failed:', userError.code);
+                        await logLoginAttempt(password, `login_failed_${userError.code}`, false);
+
+                        loginBtn.classList.remove('loading');
+                        loginBtn.innerText = 'ВОЙТИ';
+
+                        let errorMsg = 'Ошибка входа';
+                        if (userError.code === 'auth/wrong-password' || userError.code === 'auth/invalid-credential') errorMsg = 'Неверный пароль';
+                        if (userError.code === 'auth/user-not-found') errorMsg = 'Пользователь не найден';
+                        if (userError.code === 'auth/too-many-requests') errorMsg = 'Слишком много попыток. Попробуйте позже.';
+
+                        handleFailedLogin(errorMsg);
                     }
+                } else {
+                    // Some other admin error (network, lockout, etc)
+                    console.error('❌ Admin login unexpected error:', adminError);
+                    loginBtn.classList.remove('loading');
+                    loginBtn.innerText = 'ВОЙТИ';
+                    handleFailedLogin('Ошибка системы: ' + adminError.code);
                 }
-            } catch (error) {
-                console.error('❌ Login failed:', error.code, error.message);
-                await logLoginAttempt(password, `login_failed_${error.code}`, false);
-
-                loginBtn.classList.remove('loading');
-                loginBtn.innerText = 'ВОЙТИ';
-
-                let errorMsg = 'Ошибка входа';
-                if (error.code === 'auth/wrong-password') errorMsg = 'Неверный пароль';
-                if (error.code === 'auth/user-not-found') errorMsg = 'Пользователь не найден';
-                if (error.code === 'auth/too-many-requests') errorMsg = 'Слишком много попыток. Попробуйте позже.';
-
-                handleFailedLogin(errorMsg);
             }
         }
 
