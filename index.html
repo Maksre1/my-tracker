@@ -1001,66 +1001,30 @@
         window.firebaseAuth = auth;
 
 
-        // Obfuscated credentials decoder
-        const _0x4a2b = (s) => atob(s);
-        const _0x3c1d = () => {
-            const p1 = _0x4a2b('YWRtaW5AdmFwZS5jb20=');
-            const p2 = _0x4a2b('YXJ0ZW12YXBl');
-            return [p1, p2];
-        };
-
-        window.addEventListener('online', async () => {
-            if (!auth.currentUser) {
-                const [e, p] = _0x3c1d();
-                try {
-                    await signInWithEmailAndPassword(auth, e, p);
-                } catch (err) {
-                    console.error("Re-auth failed:", err);
-                }
-            }
-            updateSyncUI(navigator.onLine && !!auth.currentUser);
-        });
-
-        // Auto-login to Firebase
+        // Real-time sync and auth monitoring
         let cloudSub = null;
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 console.log("Firebase Authenticated 🔓");
-
-
-
                 updateSyncUI(true);
 
                 // Real-time listener: data will sync instantly across devices
                 if (cloudSub) cloudSub();
                 cloudSub = onSnapshot(doc(db, "tracker", "mainData"), (docSnap) => {
                     if (docSnap.exists()) {
-
                         processCloudUpdate(docSnap.data());
-                    } else {
-
                     }
                 }, (err) => {
                     console.error("Cloud Listener Error:", err);
-
                     updateSyncUI(false);
                 });
             } else {
-                console.log("Authenticating Firebase...");
-
-
-
-
-                const [e, p] = _0x3c1d();
-                signInWithEmailAndPassword(auth, e, p)
-                    .catch(err => {
-                        console.error("Firebase Auth Error:", err);
-
-
-                        updateSyncUI(false);
-                    });
+                // No authenticated user - redirect to login
+                console.log("No Firebase Auth session - redirecting to login");
+                window.location.href = 'login.html';
             }
         });
+
 
         window.addEventListener('offline', () => updateSyncUI(false));
 

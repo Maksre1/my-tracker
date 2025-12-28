@@ -1,7 +1,16 @@
-// Auth Check
-if (!sessionStorage.getItem('vapeAuth') && !localStorage.getItem('vapeAuth')) {
-    window.location.href = 'login.html';
+// CRITICAL SECURITY: Firebase Auth Check
+// Only allow access if user is authenticated via Firebase
+// This runs immediately before any app logic
+if (!window.auth || !window.auth.currentUser) {
+    // Wait briefly for Firebase to initialize
+    setTimeout(() => {
+        if (!window.auth || !window.auth.currentUser) {
+            console.warn('No Firebase Auth session - redirecting to login');
+            window.location.href = 'login.html';
+        }
+    }, 500);
 }
+
 
 // Data State
 let sales = JSON.parse(localStorage.getItem('vapeSales')) || [];
@@ -961,23 +970,29 @@ window.onclick = function (event) {
 
 function logout() {
     if (confirm("Вы уверены, что хотите выйти?")) {
+        // Clear localStorage flags
         sessionStorage.removeItem('vapeAuth');
         localStorage.removeItem('vapeAuth');
-        // Don't remove cachedPasswordHash so offline login still works later if needed
+        localStorage.removeItem('vapeRole');
 
-        // Sign out from Firebase if available
-        if (window.firebaseAuth) {
-            window.firebaseAuth.signOut().then(() => {
-                window.location.href = 'login.html';
-            }).catch(err => {
-                console.error("Firebase signout error:", err);
-                window.location.href = 'login.html';
+        // CRITICAL: Sign out from Firebase Auth to terminate session
+        if (window.auth) {
+            import("https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js").then(({ signOut }) => {
+                signOut(window.auth).then(() => {
+                    console.log('✅ Firebase Auth session terminated');
+                    window.location.href = 'login.html';
+                }).catch(err => {
+                    console.error("Firebase signout error:", err);
+                    // Redirect anyway even if signout fails
+                    window.location.href = 'login.html';
+                });
             });
         } else {
             window.location.href = 'login.html';
         }
     }
 }
+
 
 // Password Change Functions
 function openChangePasswordModal() {
