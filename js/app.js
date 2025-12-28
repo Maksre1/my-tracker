@@ -41,9 +41,7 @@ function hideLoading() {
     }
 }
 
-function updateDatalist() {
-    console.log('Datalist updated');
-}
+// function updateDatalist moved to end
 
 let sortType = localStorage.getItem('vapeSortType') || 'date';
 let sortDir = localStorage.getItem('vapeSortDir') || 'desc';
@@ -2264,9 +2262,173 @@ renderStats();
 updateDatalist();
 setupLossAutocomplete();
 renderNotes();
+renderOrders();
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js');
     });
 }
+
+// --- Orders Logic ---
+function openOrderModal() {
+    document.getElementById('orderModal').style.display = 'flex';
+    document.getElementById('orderClient').value = '';
+    document.getElementById('orderContact').value = '';
+    document.getElementById('orderItem').value = '';
+    document.getElementById('orderQty').value = '1';
+    document.getElementById('orderPrice').value = '';
+    document.getElementById('orderNote').value = '';
+
+    // Set datalist for item
+    const itemInput = document.getElementById('orderItem');
+    if (itemInput) itemInput.setAttribute('list', 'productNames');
+
+    const clientInp = document.getElementById('orderClient');
+    if (clientInp) clientInp.focus();
+}
+
+function closeOrderModal() {
+    document.getElementById('orderModal').style.display = 'none';
+}
+
+function saveOrder() {
+    const client = document.getElementById('orderClient').value.trim();
+    const contact = document.getElementById('orderContact').value.trim();
+    const item = document.getElementById('orderItem').value.trim();
+    const qty = parseInt(document.getElementById('orderQty').value) || 1;
+    const price = parseFloat(document.getElementById('orderPrice').value) || 0;
+    const note = document.getElementById('orderNote').value.trim();
+
+    let type = 'reserve';
+    document.getElementsByName('orderType').forEach(r => { if (r.checked) type = r.value; });
+
+    if (!client || !item) {
+        showToast("Укажи клиента и товар ⚠️", "error");
+        return;
+    }
+
+    orders.unshift({
+        id: Date.now().toString(),
+        client,
+        contact,
+        item,
+        qty,
+        price,
+        type,
+        note,
+        date: new Date().toISOString()
+    });
+
+    localStorage.setItem('vapeOrders', JSON.stringify(orders));
+    closeOrderModal();
+    renderOrders();
+    saveData(`Новый заказ: ${client} (${item})`);
+    showToast("Заказ создан ✅");
+}
+
+function deleteOrder(id) {
+    if (!confirm('Удалить этот заказ?')) return;
+    orders = orders.filter(o => o.id !== id);
+    localStorage.setItem('vapeOrders', JSON.stringify(orders));
+    renderOrders();
+    saveData('Удален заказ');
+}
+
+function completeOrder(id) {
+    const order = orders.find(o => o.id === id);
+    if (!order) return;
+
+    if (!confirm(`Завершить заказ и продать "${order.item}"?`)) return;
+
+    // Convert to Sale
+    const sale = {
+        name: order.item,
+        price: order.price || 0,
+        qty: order.qty || 1,
+        date: new Date().toLocaleDateString('ru-RU'),
+        timestamp: Date.now()
+    };
+    sales.unshift(sale);
+
+    let invItem = inventory.find(i => i.name.toLowerCase() === order.item.toLowerCase());
+    if (invItem) {
+        invItem.qty -= order.qty;
+        if (invItem.qty < 0) invItem.qty = 0;
+        showToast(`Списано ${order.qty} шт. со склада`);
+    } else {
+        showToast("Товар не найден на складе (продано в минус?)", "warning");
+    }
+
+    orders = orders.filter(o => o.id !== id);
+
+    localStorage.setItem('vapeSales', JSON.stringify(sales));
+    localStorage.setItem('vapeInventory', JSON.stringify(inventory));
+    localStorage.setItem('vapeOrders', JSON.stringify(orders));
+
+    renderOrders();
+    saveData(`Заказ выполнен: ${order.client} -> Продажа ${order.item}`);
+}
+
+function renderOrders() {
+    const container = document.getElementById('ordersDisplay');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (!orders || orders.length === 0) {
+        container.innerHTML = '<div class="empty-state">Нет активных заказов</div>';
+        return;
+    }
+
+    orders.forEach(order => {
+        const isPreorder = order.type === 'preorder';
+        const typeLabel = isPreorder ? '🔵 Предзаказ' : '🟢 Бронь';
+        const typeStyle = isPreorder ? 'color: #2196F3;' : 'color: var(--success-color);';
+        const dateStr = new Date(order.date).toLocaleDateString('ru-RU');
+
+        const card = document.createElement('div');
+        card.className = 'history-item';
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-weight: bold; font-size: 16px;">${order.client}</span>
+                <span style="font-size: 12px; ${typeStyle} font-weight: bold;">${typeLabel}</span>
+            </div>
+            <div style="margin-bottom: 5px; font-size: 14px;">
+                ${order.item} <span style="opacity: 0.6;">x${order.qty}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; opacity: 0.7;">
+                <span>${dateStr} ${order.contact ? '| ' + order.contact : ''}</span>
+                <span style="font-weight: bold; font-size: 14px; color: white;">${order.price} ₽</span>
+            </div>
+            ${order.note ? `<div style="font-size: 11px; margin-top: 5px; color: #ffd93d;">${order.note}</div>` : ''}
+            
+            <div class="card-actions" style="margin-top: 10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                 <button onclick="deleteOrder('${order.id}')" style="background: none; border: 1px solid rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 8px;">🗑️</button>
+                 <button onclick="completeOrder('${order.id}')" style="background: var(--success-color); border: none; border-radius: 8px; color: black; padding: 5px 15px; font-weight: bold; font-size: 12px;">ВЫДАНО</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function updateDatalist() {
+    let datalist = document.getElementById('productNames');
+    if (!datalist) {
+        datalist = document.createElement('datalist');
+        datalist.id = 'productNames';
+        document.body.appendChild(datalist);
+    }
+    datalist.innerHTML = '';
+    if (inventory) {
+        inventory.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.name;
+            option.label = `${item.qty} шт | ${item.price}р`;
+            datalist.appendChild(option);
+        });
+    }
+}
+
+// Exports
+window.orders = orders;
+window.saveOrder = saveOrder;
