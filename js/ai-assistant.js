@@ -106,7 +106,12 @@ async function saveAISettings() {
     } catch (e) {
         console.error("AI Save Error:", e);
         if (e.code === 'permission-denied') {
-            showToast("Ошибка доступа к облаку (вы не админ?)", "error");
+            const email = window.auth?.currentUser?.email || 'неизвестно';
+            if (email !== 'system@vape.com') {
+                showToast(`Ошибка: Вы вошли как ${email}. Нужен system@vape.com`, "error");
+            } else {
+                showToast("Ошибка доступа к облаку (вы не админ?)", "error");
+            }
         } else {
             showToast("Сохранено локально (ошибка облака)", "error");
         }
