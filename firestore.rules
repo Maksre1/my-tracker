@@ -13,7 +13,8 @@ service cloud.firestore {
 
     // PUBLIC STATUS: Non-sensitive document to check if password setup is required
     match /auth/userPasswordState {
-      allow read, write: if request.auth != null;
+      allow read: if true;
+      allow write: if request.auth != null;
     }
 
     // Login attempt logs (allows logging before user is authenticated)
