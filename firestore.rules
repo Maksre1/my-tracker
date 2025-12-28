@@ -25,7 +25,7 @@ service cloud.firestore {
 
     // AI Configuration: Read by all, Write only by admin
     match /settings/ai_config {
-      allow read: if true;
+      allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.token.email == 'system@vape.com';
     }
 
