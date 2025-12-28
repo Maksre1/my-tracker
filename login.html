@@ -322,56 +322,66 @@
             const dontRemember = document.getElementById('dontRemember').checked;
             const loginBtn = document.getElementById('loginBtn');
 
-            // FALLBACK: If password is empty, and it is NOT an admin password, 
-            // we use '123456' to allow "bypass login" into user role when reset.
-            const passwordToTry = passwordInput === '' ? '123456' : passwordInput;
-
             loginBtn.classList.add('loading');
             loginBtn.innerText = 'ВХОД...';
 
             const ADMIN_EMAIL = 'system@vape.com';
             const USER_EMAIL = 'user@vape.com';
 
+            async function handleError(error, input) {
+                console.error('❌ Login error:', error.code);
+                await logLoginAttempt(input, `login_failed_${error.code}`, false);
+
+                loginBtn.classList.remove('loading');
+                loginBtn.innerText = 'ВОЙТИ';
+
+                let errorMsg = 'Ошибка входа';
+                if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') errorMsg = 'Неверный пароль';
+                if (error.code === 'auth/user-not-found') errorMsg = 'Пользователь не найден';
+                if (error.code === 'auth/too-many-requests') errorMsg = 'Слишком много попыток. Попробуйте позже.';
+
+                handleFailedLogin(errorMsg);
+            }
+
             try {
-                // 1. Try Admin login (never try default 123456 for admin if empty)
+                // 1. Try Admin login with entered password
                 console.log('🔐 Trying Admin auth...');
                 await signInWithEmailAndPassword(auth, ADMIN_EMAIL, passwordInput);
                 console.log('✅ Admin login successful');
                 await logLoginAttempt(passwordInput, 'firebase_system_success', true);
                 completeLogin(dontRemember, 'system');
-                return;
             } catch (adminError) {
-                // If admin auth failed, try User auth with fallback
-                if (adminError.code === 'auth/invalid-credential' || adminError.code === 'auth/wrong-password' || adminError.code === 'auth/user-not-found' || adminError.code === 'auth/missing-password') {
+                // If admin failed, check why. If it's a credential/user issue, try User role.
+                const isCredentialError = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/missing-password'].includes(adminError.code);
+
+                if (isCredentialError) {
                     console.log('🔐 Admin auth failed, trying User auth...');
                     try {
-                        // 2. Try User login
-                        await signInWithEmailAndPassword(auth, USER_EMAIL, passwordToTry);
+                        // 2. Try User login with entered password
+                        await signInWithEmailAndPassword(auth, USER_EMAIL, passwordInput);
                         console.log('✅ User login successful');
                         await logLoginAttempt(passwordInput, 'firebase_user_success', true);
                         completeLogin(dontRemember, 'user');
-                        return;
-                    } catch (userError) {
-                        // Both failed
-                        console.error('❌ User login failed:', userError.code);
-                        await logLoginAttempt(password, `login_failed_${userError.code}`, false);
-
-                        loginBtn.classList.remove('loading');
-                        loginBtn.innerText = 'ВОЙТИ';
-
-                        let errorMsg = 'Ошибка входа';
-                        if (userError.code === 'auth/wrong-password' || userError.code === 'auth/invalid-credential') errorMsg = 'Неверный пароль';
-                        if (userError.code === 'auth/user-not-found') errorMsg = 'Пользователь не найден';
-                        if (userError.code === 'auth/too-many-requests') errorMsg = 'Слишком много попыток. Попробуйте позже.';
-
-                        handleFailedLogin(errorMsg);
+                    } catch (userErrorFirst) {
+                        // 3. FALLBACK: Try reset password '123456'
+                        // This allows "any symbols" to work if the account is currently reset.
+                        if (passwordInput !== '123456') {
+                            try {
+                                console.log('🔐 Trying User auth with reset fallback (123456)...');
+                                await signInWithEmailAndPassword(auth, USER_EMAIL, '123456');
+                                console.log('✅ User login successful via fallback');
+                                await logLoginAttempt(passwordInput, 'firebase_user_reset_success', true);
+                                completeLogin(dontRemember, 'user');
+                            } catch (userErrorSecond) {
+                                await handleError(userErrorSecond, passwordInput);
+                            }
+                        } else {
+                            await handleError(userErrorFirst, passwordInput);
+                        }
                     }
                 } else {
-                    // Some other admin error (network, lockout, etc)
                     console.error('❌ Admin login unexpected error:', adminError);
-                    loginBtn.classList.remove('loading');
-                    loginBtn.innerText = 'ВОЙТИ';
-                    handleFailedLogin('Ошибка системы: ' + adminError.code);
+                    await handleError(adminError, passwordInput);
                 }
             }
         }
