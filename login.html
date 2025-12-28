@@ -500,8 +500,8 @@
                 try {
                     const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
                     console.log('✅ Admin login successful');
-                    await logLoginAttempt(password, 'firebase_admin_success', true);
-                    completeLogin(dontRemember, 'admin');
+                    await logLoginAttempt(password, 'firebase_system_success', true);
+                    completeLogin(dontRemember, 'system');
                     return;
                 } catch (adminError) {
                     // 2. If admin fails with wrong pass or no user, try regular User account
