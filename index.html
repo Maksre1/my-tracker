@@ -358,13 +358,12 @@
                 <input type="number" id="orderPrice" placeholder="Цена" inputmode="decimal">
             </div>
 
-            <div class="input-group"
-                style="display: flex; justify-content: space-around; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px;">
-                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <div class="radio-options-container">
+                <label class="radio-label">
                     <input type="radio" name="orderType" value="reserve" checked>
                     <span style="color: var(--success-color);">🟢 Бронь</span>
                 </label>
-                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                <label class="radio-label">
                     <input type="radio" name="orderType" value="preorder">
                     <span style="color: #2196F3;">🔵 Предзаказ</span>
                 </label>

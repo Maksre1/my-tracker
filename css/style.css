@@ -570,6 +570,68 @@
             display: block;
         }
 
+        /* Custom Radio Buttons for Modal */
+        .radio-options-container {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
+
+        .radio-label {
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+
+        .radio-label:active {
+            transform: scale(0.96);
+        }
+
+        .radio-label input[type="radio"] {
+            display: none; /* Hide default */
+            width: 0; 
+            height: 0;
+        }
+
+        .radio-label span {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0.6;
+            transition: color 0.3s, opacity 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .radio-label:has(input:checked) {
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .radio-label input:checked + span {
+            opacity: 1;
+            font-weight: 700;
+        }
+
+        .radio-label input:checked + span::after {
+            content: '✓';
+            display: inline-block;
+            font-weight: 900;
+            font-size: 14px;
+        }
+
         /* Autocomplete */
         .autocomplete-container {
             position: relative;
