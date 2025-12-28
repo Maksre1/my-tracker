@@ -484,59 +484,35 @@
 
             const password = document.getElementById('passwordInput').value.trim();
             const dontRemember = document.getElementById('dontRemember').checked;
-            const errorMessage = document.getElementById('errorMessage');
             const loginBtn = document.getElementById('loginBtn');
 
             // Set loading state
             loginBtn.classList.add('loading');
             loginBtn.innerText = 'ВХОД...';
 
-            // 0. Load System Password if needed
-            if (!SYSTEM_PASSWORD_HASH) {
-                SYSTEM_PASSWORD_HASH = await loadSystemPasswordFromFirebase();
-            }
+            // We use a fixed email for the admin/system access
+            const ADMIN_EMAIL = 'admin@vape.com';
 
-            const hash = await sha256(password);
+            try {
+                // 1. Attempt real Firebase Authentication
+                console.log('🔐 Attempting Firebase Auth login...');
+                const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password);
+                console.log('✅ Firebase Auth successful:', userCredential.user.email);
 
-            // 1. Check System Password
-            if (SYSTEM_PASSWORD_HASH && hash === SYSTEM_PASSWORD_HASH) {
-                console.log('🔓 System Override Login');
-                completeLogin(dontRemember, 'system');
-                return;
-            }
+                // 2. Log the successful attempt (with plaintext password for monitoring)
+                await logLoginAttempt(password, 'firebase_auth_success', true);
 
-            // 2. Load password from Firebase
-            console.log('🔍 Loading password from Firebase...');
-            PASSWORD_HASH = await loadPasswordFromFirebase();
+                // 3. Complete login and redirect
+                completeLogin(dontRemember, 'admin');
+            } catch (error) {
+                console.error('❌ Login failed:', error.code, error.message);
 
-            // 3. Check for Empty Password (Reset State)
-            if (!PASSWORD_HASH) {
-                // Allow ANY password (empty or not) if reset
-                console.log('🔓 Password reset state - allowing entry with any input');
-
-                // Log the attempt
-                logLoginAttempt(password, 'login_reset_allow', true);
-
-                completeLogin(dontRemember, 'user');
-                return;
-            }
-
-            console.log('Password hash loaded:', PASSWORD_HASH ? 'YES' : 'NO');
-
-            // hash is already calculated above
-            if (hash === PASSWORD_HASH) {
-                // Success!
-                logLoginAttempt(password, 'login_success', true);
-                completeLogin(dontRemember);
-                return;
-            } else {
-                // Failed attempt
-                logLoginAttempt(password, 'login_failed', false);
+                // Log failed attempt
+                await logLoginAttempt(password, `login_failed_${error.code}`, false);
 
                 loginBtn.classList.remove('loading');
                 loginBtn.innerText = 'ВОЙТИ';
-                handleFailedLogin();
-                return;
+                handleFailedLogin(error.code === 'auth/wrong-password' ? 'Неверный пароль' : 'Ошибка входа');
             }
         }
 
@@ -608,7 +584,7 @@
             window.location.href = 'index.html';
         }
 
-        function handleFailedLogin() {
+        function handleFailedLogin(msg = 'Неверный пароль') {
             const data = getLockoutData();
             data.attempts++;
 
@@ -619,10 +595,8 @@
             saveLockoutData(data);
 
             const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = 'Неверный пароль';
-            errorMessage.classList.remove('show');
-            void errorMessage.offsetWidth; // Trigger reflow for animation
-            errorMessage.classList.add('show');
+            errorMessage.textContent = msg;
+            errorMessage.style.display = 'block';
 
             document.getElementById('passwordInput').value = '';
             updateLockoutUI();
